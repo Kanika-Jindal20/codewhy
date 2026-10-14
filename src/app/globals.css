@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --app-bg: #0B1020;
+  --app-panel: #111827;
+  --app-surface: #172033;
+  --app-border: #273449;
+  --text-primary: #F3F6FC;
+  --text-secondary: #A7B2C4;
+  --text-muted: #78869B;
+  --accent-primary: #6485F5;
+  --accent-secondary: #9B8AFB;
+  --status-success: #35B88A;
+  --status-warning: #E7B65C;
+  --status-error: #F07878;
+  --status-info: #64B5F6;
+}
+
+body {
+  background-color: var(--app-bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scrollbars matching engineering dashboard aesthetic */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0B1020;
+}
+::-webkit-scrollbar-thumb {
+  background: #273449;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3c4f6d;
+}
