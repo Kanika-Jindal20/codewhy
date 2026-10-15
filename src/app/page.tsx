@@ -105,26 +105,51 @@ export default function DashboardOverviewPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column (8 cols): Recent Changes & Impact Analysis Spotlight */}
         <div className="lg:col-span-8 space-y-6">
-          {/* Spotlight on Feature 7 */}
-          <div className="bg-gradient-to-r from-accent-primary/10 via-app-panel to-app-surface border border-accent-primary/30 rounded-lg p-5">
-            <div className="flex items-center justify-between gap-3 mb-2">
-              <span className="text-xs font-semibold text-accent-primary uppercase tracking-wider flex items-center gap-1.5">
-                <Zap className="w-4 h-4" />
-                Featured Intelligence Tool
-              </span>
-              <Badge variant="purple" size="sm">Feature 7 Active</Badge>
+          {/* Feature spotlight grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Feature 7 — Impact Analysis */}
+            <div className="bg-gradient-to-r from-accent-primary/10 via-app-panel to-app-surface border border-accent-primary/30 rounded-lg p-5">
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <span className="text-xs font-semibold text-accent-primary uppercase tracking-wider flex items-center gap-1.5">
+                  <Zap className="w-4 h-4" />
+                  Impact Analysis
+                </span>
+                <Badge variant="purple" size="sm">Feature 7</Badge>
+              </div>
+              <h2 className="text-base font-bold text-text-primary mb-1">
+                Pre-Change Blast Radius
+              </h2>
+              <p className="text-xs text-text-secondary leading-relaxed mb-4">
+                Evaluate direct callers, transitive dependents, unit tests, and co-change history before editing code.
+              </p>
+              <Link href="/impact">
+                <Button variant="primary" size="sm" icon={<ArrowRight className="w-3.5 h-3.5" />}>
+                  Try Impact Estimator
+                </Button>
+              </Link>
             </div>
-            <h2 className="text-base font-bold text-text-primary mb-1">
-              What If We Change This? — Pre-Change Impact Analysis
-            </h2>
-            <p className="text-xs text-text-secondary leading-relaxed mb-4 max-w-xl">
-              Inspect downstream blast radius before editing code. Evaluates direct callers, transitive dependents up to 6 hops, associated unit tests, runtime environment schemas, and Git commit co-changes.
-            </p>
-            <Link href="/impact">
-              <Button variant="primary" size="sm" icon={<ArrowRight className="w-3.5 h-3.5" />}>
-                Try Impact Estimator
-              </Button>
-            </Link>
+
+            {/* Feature 11 — Architecture Explorer */}
+            <div className="bg-gradient-to-r from-accent-secondary/10 via-app-panel to-app-surface border border-accent-secondary/30 rounded-lg p-5">
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <span className="text-xs font-semibold text-accent-secondary uppercase tracking-wider flex items-center gap-1.5">
+                  <Network className="w-4 h-4" />
+                  Architecture Explorer
+                </span>
+                <Badge variant="success" size="sm">Feature 11 New</Badge>
+              </div>
+              <h2 className="text-base font-bold text-text-primary mb-1">
+                Explainable Architecture Graph
+              </h2>
+              <p className="text-xs text-text-secondary leading-relaxed mb-4">
+                Visually explore component relationships, search entities, expand neighborhoods, and trace evidence to source code.
+              </p>
+              <Link href="/architecture">
+                <Button variant="secondary" size="sm" icon={<ArrowRight className="w-3.5 h-3.5" />}>
+                  Open Explorer
+                </Button>
+              </Link>
+            </div>
           </div>
 
           {/* Recent Commits & Detected Changes */}

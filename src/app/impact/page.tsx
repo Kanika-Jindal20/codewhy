@@ -7,7 +7,8 @@ import {
   HelpCircle, 
   SlidersHorizontal, 
   BookmarkCheck,
-  AlertCircle 
+  AlertCircle,
+  FileText 
 } from 'lucide-react';
 import { SAMPLE_REPO_ECOMMERCE } from '@/lib/graph/graph-store';
 import { analyzeChangeImpact } from '@/lib/impact/impact-service';
@@ -27,6 +28,10 @@ import { ThreeWaySeparationCard } from '@/components/impact/ThreeWaySeparationCa
 import { RisksAndChecklist } from '@/components/impact/RisksAndChecklist';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Alert } from '@/components/ui/Alert';
+import { Button } from '@/components/ui/Button';
+import { ExportPdfModal } from '@/components/reports/ExportPdfModal';
+import { EngineeringDecisionReport } from '@/types/report';
+import Link from 'next/link';
 
 export default function ImpactAnalysisPage() {
   const [selectedNode, setSelectedNode] = useState<GraphNode>(SAMPLE_REPO_ECOMMERCE.nodes[0]);
@@ -39,6 +44,95 @@ export default function ImpactAnalysisPage() {
   const [error, setError] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<ImpactAnalysisResult | null>(null);
   const [inspectedComponent, setInspectedComponent] = useState<AffectedComponent | null>(null);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
+
+  const handleSaveInvestigation = async () => {
+    if (!analysisResult) return;
+    try {
+      const res = await fetch('/api/investigations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `Pre-Change Impact: ${analysisResult.selectedComponent.label} (${analysisResult.proposedChange.category})`,
+          repoId: analysisResult.repoId,
+          repoName: 'acme/commerce-core',
+          originalQuestion: `What is the blast radius and architectural risk of ${analysisResult.proposedChange.description}?`,
+          initialAnswerSummary: `Evaluated ${analysisResult.summary.totalAffected} downstream components (${analysisResult.summary.directCount} direct, ${analysisResult.summary.transitiveCount} transitive).`,
+          detailedFindings: analysisResult.potentialRisks.map(r => `${r.risk}: ${r.rationale}`),
+          evidence: analysisResult.affectedComponents.flatMap(c => c.evidence).slice(0, 5),
+          sourceContext: {
+            type: 'impact_analysis',
+            targetId: analysisResult.selectedComponent.id,
+            targetPath: analysisResult.selectedComponent.filePath,
+          },
+          tags: ['impact', 'blast_radius', analysisResult.proposedChange.category],
+        }),
+      });
+      if (res.ok) {
+        setSaveSuccessMessage('Investigation saved to history. Revisit and ask follow-ups at /investigations.');
+        setTimeout(() => setSaveSuccessMessage(null), 6000);
+      }
+    } catch (err) {
+      console.error('Save failed:', err);
+    }
+  };
+
+  const buildReportFromImpact = (): EngineeringDecisionReport | null => {
+    if (!analysisResult) return null;
+    return {
+      id: `rep-impact-${analysisResult.selectedComponent.id}`,
+      title: `Pre-Change Impact Audit: ${analysisResult.selectedComponent.label} (${analysisResult.proposedChange.category})`,
+      generatedAt: analysisResult.analyzedAt,
+      author: 'CodeWhy Pre-Change Impact Engine',
+      version: '1.0.0',
+      repository: {
+        repoId: analysisResult.repoId,
+        repoName: 'acme/commerce-core',
+        repoUrl: 'https://github.com/acme/commerce-core',
+        analyzedCommit: '7a8f9c2d1b',
+        analyzedBranch: 'main',
+        primaryLanguage: 'TypeScript',
+      },
+      executiveSummary: {
+        headline: `Evaluated ${analysisResult.summary.totalAffected} downstream entities across ${analysisResult.summary.directCount} direct and ${analysisResult.summary.transitiveCount} transitive hops.`,
+        overview: analysisResult.summary.overview,
+        criticalTakeaways: analysisResult.potentialRisks.map(r => `${r.risk}: ${r.rationale}`),
+        riskAssessmentLevel: analysisResult.potentialRisks.some(r => r.level === 'high') ? 'elevated' : 'moderate',
+      },
+      proposedChange: {
+        targetSymbolOrFile: `${analysisResult.selectedComponent.label} (${analysisResult.selectedComponent.filePath})`,
+        changeCategory: analysisResult.proposedChange.category,
+        questionOrDescription: analysisResult.proposedChange.description,
+      },
+      findings: analysisResult.affectedComponents.map((c, i) => ({
+        id: `f-${i}`,
+        title: `${c.node.label} (${c.impactKind.replace(/_/g, ' ')})`,
+        category: c.impactKind,
+        severity: c.severity,
+        explanation: c.severityReason,
+        supportingEvidenceIds: c.evidence.map(e => e.id),
+      })),
+      impactAnalysis: {
+        summary: analysisResult.summary,
+        affectedComponents: analysisResult.affectedComponents,
+        dependencyPaths: analysisResult.dependencyPaths,
+        relatedTests: analysisResult.relatedTests,
+        pastRegressions: analysisResult.pastRegressions,
+        potentialRisks: analysisResult.potentialRisks,
+      },
+      evidence: analysisResult.affectedComponents.flatMap(c => c.evidence),
+      limitations: {
+        staticAnalysisCaveats: analysisResult.limitations || [
+          'Dynamic reflection: Runtime eval() or dynamic import() cannot be deterministically resolved by AST alone.',
+          'Statistical co-change coupling reflects developer habits, not guaranteed hard architectural dependencies.',
+        ],
+        recommendedChecklist: analysisResult.manualVerificationAreas.flatMap(a => a.checklist),
+        suggestedFollowUpInvestigations: ['Run unit test suites against updated signatures.'],
+      },
+      confidence: analysisResult.confidence,
+    };
+  };
 
   // Run initial impact calculation on mount
   useEffect(() => {
@@ -111,6 +205,16 @@ export default function ImpactAnalysisPage() {
           <span className="text-xs font-mono text-text-muted bg-app-panel px-3 py-1.5 rounded-lg border border-app-border">
             Target: <strong className="text-text-primary">{selectedNode.label}</strong>
           </span>
+          {analysisResult && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsExportModalOpen(true)}
+              icon={<FileText className="w-3.5 h-3.5 text-accent-primary" />}
+            >
+              Export PDF Report
+            </Button>
+          )}
         </div>
       </div>
 
@@ -118,6 +222,21 @@ export default function ImpactAnalysisPage() {
       {error && (
         <Alert type="error" title="Analysis Failure">
           {error}
+        </Alert>
+      )}
+
+      {/* Save Success Banner */}
+      {saveSuccessMessage && (
+        <Alert type="success" title="Investigation Saved to Memory">
+          <div className="flex items-center justify-between text-xs">
+            <span>{saveSuccessMessage}</span>
+            <Link
+              href="/investigations"
+              className="text-status-success underline font-semibold ml-2 hover:opacity-80 shrink-0"
+            >
+              Open History &rarr;
+            </Link>
+          </div>
         </Alert>
       )}
 
@@ -188,9 +307,7 @@ export default function ImpactAnalysisPage() {
           {/* Potential Risks, Historical Regressions, Co-Changes & Verification Checklist */}
           <RisksAndChecklist
             result={analysisResult}
-            onSaveInvestigation={() => {
-              console.log('Investigation saved for', selectedNode.id);
-            }}
+            onSaveInvestigation={handleSaveInvestigation}
           />
         </div>
       ) : null}
@@ -200,6 +317,15 @@ export default function ImpactAnalysisPage() {
         component={inspectedComponent}
         onClose={() => setInspectedComponent(null)}
       />
+
+      {/* Export Decision Report PDF Modal */}
+      {analysisResult && (
+        <ExportPdfModal
+          report={buildReportFromImpact()!}
+          isOpen={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

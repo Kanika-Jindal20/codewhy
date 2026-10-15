@@ -33,10 +33,10 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Knowledge Graph', href: '/graph', icon: <Network className="w-4 h-4" />, status: 'planned' },
   { name: 'Decision Timeline', href: '/timeline', icon: <History className="w-4 h-4" />, status: 'planned' },
   { name: 'Impact Analysis', href: '/impact', icon: <Zap className="w-4 h-4" />, status: 'active' },
-  { name: 'Knowledge Gaps', href: '/gaps', icon: <AlertTriangle className="w-4 h-4" />, status: 'planned' },
-  { name: 'Architecture Explorer', href: '/architecture', icon: <Compass className="w-4 h-4" />, status: 'planned' },
-  { name: 'Investigation History', href: '/investigations', icon: <Search className="w-4 h-4" />, status: 'planned' },
-  { name: 'Reports', href: '/reports', icon: <FileText className="w-4 h-4" />, status: 'planned' },
+  { name: 'Knowledge Gaps', href: '/gaps', icon: <AlertTriangle className="w-4 h-4" />, status: 'active' },
+  { name: 'Architecture Explorer', href: '/architecture', icon: <Compass className="w-4 h-4" />, status: 'active' },
+  { name: 'Investigation History', href: '/investigations', icon: <Search className="w-4 h-4" />, status: 'active' },
+  { name: 'Reports', href: '/reports', icon: <FileText className="w-4 h-4" />, status: 'active' },
 ];
 
 export const Sidebar: React.FC = () => {
