@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FileCode, GitCommit, ExternalLink, Copy, Check, ShieldCheck } from 'lucide-react';
+import { FileCode, GitCommit, ExternalLink, Copy, Check, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { EvidenceSource } from '@/types/evidence';
 import { Badge } from '@/components/ui/Badge';
 
@@ -21,12 +21,15 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({ evidence, compact = 
   };
 
   const isCommit = evidence.type === 'commit' || !!evidence.commitHash;
-  const isFile = evidence.type === 'file_span' || evidence.type === 'ast_relation' || !!evidence.filePath;
+  const sourceUrl = safeGitHubUrl(evidence.url);
+  const directness = evidence.directness ?? (evidence.type === 'co_change_history' ? 'indirect' : 'direct');
+  const directnessLabel = directness === 'direct' ? 'Direct source' : directness === 'indirect' ? 'Inferred relationship' : 'Model interpretation';
+  const sourceTypeLabel = evidence.type.replaceAll('_', ' ');
 
   return (
     <div className="rounded-lg border border-app-border bg-app-surface/50 p-3.5 hover:border-accent-primary/40 transition-colors">
       <div className="flex items-start justify-between gap-2 mb-2">
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           {isCommit ? (
             <GitCommit className="w-4 h-4 text-accent-secondary shrink-0" />
           ) : (
@@ -37,16 +40,20 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({ evidence, compact = 
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5 shrink-0">
           {evidence.isSimulatedDemoData && (
             <Badge variant="warning" size="sm">Demo Data</Badge>
           )}
-          <Badge variant="outline" size="sm">
-            <ShieldCheck className="w-3 h-3 text-status-success inline mr-1" />
-            {Math.round(evidence.confidenceScore * 100)}%
+          {evidence.conflictGroup && <Badge variant="warning" size="sm">Conflict: {evidence.conflictGroup}</Badge>}
+          <Badge variant="default" size="sm">{sourceTypeLabel}</Badge>
+          <Badge variant={directness === 'direct' ? 'outline' : 'warning'} size="sm">
+            {directness === 'direct' ? <ShieldCheck className="w-3 h-3 text-status-success inline mr-1" /> : <AlertTriangle className="w-3 h-3 inline mr-1" />}
+            {directnessLabel}
           </Badge>
           <button
+            type="button"
             onClick={handleCopy}
+            aria-label="Copy evidence reference"
             title="Copy evidence reference"
             className="p-1 text-text-muted hover:text-text-primary rounded hover:bg-app-surface transition-colors"
           >
@@ -54,6 +61,13 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({ evidence, compact = 
           </button>
         </div>
       </div>
+
+      {evidence.freshness === 'stale' && (
+        <p className="text-[11px] text-status-warning mb-2" role="status">This source may be stale after repository changes.</p>
+      )}
+      {evidence.freshness === 'unknown' && (
+        <p className="text-[11px] text-text-muted mb-2">Source freshness has not been verified.</p>
+      )}
 
       {evidence.filePath && (
         <div className="font-mono text-xs text-text-secondary bg-app-panel px-2.5 py-1 rounded border border-app-border/60 flex items-center justify-between mb-2">
@@ -96,16 +110,27 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({ evidence, compact = 
         </pre>
       )}
 
-      {evidence.url && (
+      {sourceUrl && (
         <a
-          href={evidence.url}
+          href={sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 text-[11px] text-accent-primary hover:underline mt-2"
         >
-          View source commit/PR <ExternalLink className="w-3 h-3" />
+          View verified GitHub source <ExternalLink className="w-3 h-3" />
         </a>
       )}
     </div>
   );
 };
+
+function safeGitHubUrl(value?: string): string | undefined {
+  if (!value) return undefined;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.hostname !== 'github.com' || url.username || url.password) return undefined;
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}

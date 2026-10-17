@@ -16,17 +16,17 @@ export const ConfidenceBadge: React.FC<ConfidenceBadgeProps> = ({
   const config = {
     high: {
       icon: <CheckCircle2 className="w-3.5 h-3.5 text-status-success" />,
-      label: 'High Confidence',
+      label: 'High evidence',
       badgeClass: 'bg-status-success/10 text-status-success border-status-success/30',
     },
     medium: {
       icon: <AlertTriangle className="w-3.5 h-3.5 text-status-warning" />,
-      label: 'Medium Confidence',
+      label: 'Partial evidence',
       badgeClass: 'bg-status-warning/10 text-status-warning border-status-warning/30',
     },
     low: {
       icon: <AlertCircle className="w-3.5 h-3.5 text-status-error" />,
-      label: 'Low Confidence',
+      label: 'Limited evidence',
       badgeClass: 'bg-status-error/10 text-status-error border-status-error/30',
     },
     insufficient_evidence: {
@@ -36,14 +36,16 @@ export const ConfidenceBadge: React.FC<ConfidenceBadgeProps> = ({
     },
   }[level];
 
-  const scoreText = score !== undefined ? ` (${Math.round(score * 100)}%)` : '';
+  const scoreTitle = score !== undefined ? 'Heuristic evidence-quality label; this score is not a calibrated probability.' : undefined;
 
   return (
     <span
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border font-mono ${config.badgeClass} ${className}`}
+      title={scoreTitle}
     >
       {config.icon}
-      <span>{config.label}{scoreText}</span>
+      <span>{config.label}</span>
+      {score !== undefined && <span className="text-[9px] opacity-75">heuristic</span>}
     </span>
   );
 };

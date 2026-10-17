@@ -29,9 +29,9 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { name: 'Overview', href: '/', icon: <LayoutDashboard className="w-4 h-4" />, status: 'active' },
   { name: 'Repositories', href: '/repos', icon: <GitFork className="w-4 h-4" />, status: 'planned' },
-  { name: 'Ask Why', href: '/ask', icon: <HelpCircle className="w-4 h-4" />, status: 'planned' },
+  { name: 'Ask Why', href: '/ask', icon: <HelpCircle className="w-4 h-4" />, status: 'active' },
   { name: 'Knowledge Graph', href: '/graph', icon: <Network className="w-4 h-4" />, status: 'planned' },
-  { name: 'Decision Timeline', href: '/timeline', icon: <History className="w-4 h-4" />, status: 'planned' },
+  { name: 'Decision Timeline', href: '/timeline', icon: <History className="w-4 h-4" />, status: 'active' },
   { name: 'Impact Analysis', href: '/impact', icon: <Zap className="w-4 h-4" />, status: 'active' },
   { name: 'Knowledge Gaps', href: '/gaps', icon: <AlertTriangle className="w-4 h-4" />, status: 'active' },
   { name: 'Architecture Explorer', href: '/architecture', icon: <Compass className="w-4 h-4" />, status: 'active' },
@@ -109,7 +109,7 @@ export const Sidebar: React.FC = () => {
       <div className="p-4 border-t border-app-border text-[11px] text-text-muted flex flex-col gap-1">
         <div className="flex items-center justify-between">
           <span>Active Branch:</span>
-          <span className="font-mono text-text-secondary">feature/impact</span>
+          <span className="font-mono text-text-secondary">feature/ai-reasoning</span>
         </div>
         <div className="flex items-center justify-between">
           <span>Environment:</span>

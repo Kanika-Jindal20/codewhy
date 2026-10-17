@@ -8,6 +8,26 @@ CodeWhy is an engineering decision intelligence platform designed to help develo
 
 ## Features Implemented
 
+### Features 4, 5, 6 and 9: Evidence-grounded reasoning (current implementation)
+- **Ask Why** at `/ask`: question classification, keyword retrieval over the selected repository graph, bounded evidence context, and source IDs attached to each answer claim.
+- **Optional server-side AI answer generation**: configure an OpenAI-compatible chat-completions endpoint; without credentials the service returns a clearly labelled evidence-only answer. Generated claims with unknown citations are discarded.
+- **Evidence cards**: show source type, exact file/line or commit metadata, direct versus inferred relationship labels, stale/unknown freshness, demo data status, and validated HTTPS GitHub links.
+- **Decision Timeline** at `/timeline`: chronological commit events, decision records and explicit `supersedes` edges, with filters for component, date, status, source type and text. A later commit is not treated as proof that an earlier decision was reversed.
+- **Reliability assessment**: high, limited, conflicting, or insufficient evidence labels with reasons and source groups. Labels are heuristics, not calibrated probabilities. Conflicts are grouped only when an upstream source marks a shared `conflictGroup`.
+- The bundled `acme/commerce-core` graph is illustrative demo data. The UI labels it as demo data and does not claim it is a live GitHub import. A live repository ingestion service and automatic contradiction extraction are not present in this branch.
+
+#### Optional model configuration
+
+Set these variables in the **server environment only**. Never expose the API key through a `NEXT_PUBLIC_` variable or commit it. Retrieved repository excerpts are sent to this configured endpoint when AI generation is enabled; review your provider and repository data policy before configuring it.
+
+```env
+CODEWHY_LLM_API_KEY=your-secret-key
+CODEWHY_LLM_ENDPOINT=https://api.openai.com/v1/chat/completions
+CODEWHY_LLM_MODEL=gpt-4o-mini
+```
+
+The endpoint and model are configurable for compatible providers. If `CODEWHY_LLM_API_KEY` is absent or generation fails, `/api/ask` falls back to evidence-only output and reports that mode in the response.
+
 ### Feature 7: Pre-Change Impact Analysis ("What If We Change This?")
 - **Target Selection**: Select files, functions, classes, modules, configs, or test suites.
 - **Change Categories**:

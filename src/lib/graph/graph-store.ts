@@ -1,14 +1,15 @@
 import { KnowledgeGraph, GraphNode, GraphEdge } from '@/types/graph';
 import { EvidenceSource } from '@/types/evidence';
 
-// Real-world representative engineering repository datasets
-// Grounded with concrete file paths, commit hashes, code signatures, and historical co-changes.
+// Illustrative synthetic repository data for the demo workspace.
+// These records are labelled as demo data in user-facing feature screens.
 
 export const SAMPLE_REPO_ECOMMERCE: KnowledgeGraph = {
   repoId: 'repo-commerce-core',
   repoName: 'acme/commerce-core',
   updatedAt: '2026-10-14T18:30:00Z',
-  isDemo: false,
+  // These records are illustrative fixtures; never present them as imported GitHub evidence.
+  isDemo: true,
   nodes: [
     {
       id: 'node-auth-jwt',
