@@ -393,24 +393,42 @@ export const EntityDetailPanel: React.FC<EntityDetailPanelProps> = ({
         )}
 
         {/* Action links */}
-        <section className="pt-2 border-t border-app-border space-y-2" aria-label="Navigation actions">
-          <h4 className="text-[11px] font-semibold uppercase tracking-wider text-text-muted font-mono mb-2">
-            Navigate To
-          </h4>
+        <section className="pt-3 border-t border-app-border space-y-2.5" aria-label="Navigation actions">
+          <div className="flex items-center justify-between">
+            <h4 className="text-[11px] font-bold uppercase tracking-wider text-text-muted font-mono">
+              Engineering Actions
+            </h4>
+            <span className="text-[10px] font-semibold text-[#4169E1] bg-[#E5EDFF] px-2 py-0.5 rounded-full border border-[#C9D9FF]">
+              Impact Pipeline
+            </span>
+          </div>
+
           <Link
             href={`/impact?repoId=${encodeURIComponent(repoId)}&targetNodeId=${encodeURIComponent(node.id)}`}
-            className="flex items-center gap-2 text-xs text-accent-primary hover:underline font-mono"
+            className="flex items-center justify-between gap-3 p-3 rounded-xl bg-gradient-to-r from-[#14213D] to-[#1E293B] text-white hover:from-[#1E293B] hover:to-[#3B82F6] transition-all shadow-sm group font-semibold text-xs"
           >
-            <ExternalLink className="w-3 h-3" />
-            Run Impact Analysis on {node.label}
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-[#60A5FA] group-hover:scale-110 transition-transform">
+                <ExternalLink className="w-3.5 h-3.5 stroke-[2.5]" />
+              </span>
+              <div className="truncate">
+                <div>Evaluate Blast Radius</div>
+                <div className="text-[10px] font-normal text-slate-300 font-mono truncate">
+                  Target: {node.label}
+                </div>
+              </div>
+            </div>
+            <ArrowUpRight className="w-4 h-4 text-slate-300 group-hover:text-white transition-colors shrink-0" />
           </Link>
         </section>
 
         {/* Explainability disclaimer */}
-        <div className="p-2.5 bg-status-info/5 border border-status-info/20 rounded-lg text-[10px] text-text-muted leading-relaxed">
-          <ShieldCheck className="w-3 h-3 text-status-info inline mr-1" />
-          Relationships are derived from static AST analysis, import declarations, or Git history.
-          Co-occurrence in commit history is a statistical observation — it does not imply architectural dependency.
+        <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl text-[11px] text-text-secondary leading-relaxed">
+          <div className="flex items-center gap-1.5 font-bold text-[#1E293B] mb-1">
+            <ShieldCheck className="w-3.5 h-3.5 text-[#3B82F6]" />
+            <span>Deterministic Provenance</span>
+          </div>
+          Relationships are verified via static AST parsing or declared imports. Historical co-occurrence reflects Git commit frequency, never guessed architectural ties.
         </div>
       </div>
     </div>

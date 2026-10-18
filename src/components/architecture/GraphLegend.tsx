@@ -1,17 +1,18 @@
 import React from 'react';
 import { NodeType, EdgeType } from '@/types/graph';
 import { NODE_TYPE_COLORS, NODE_TYPE_LABELS, EDGE_TYPE_LABELS } from '@/types/architecture';
+import { BookOpen } from 'lucide-react';
 
 // Edge style configuration
 const EDGE_STYLES: Record<EdgeType, { color: string; dash?: string; label: string }> = {
-  imports:    { color: '#6485F5', label: EDGE_TYPE_LABELS.imports },
-  calls:      { color: '#35B88A', label: EDGE_TYPE_LABELS.calls },
-  extends:    { color: '#9B8AFB', dash: '5,3', label: EDGE_TYPE_LABELS.extends },
-  implements: { color: '#9B8AFB', dash: '5,3', label: EDGE_TYPE_LABELS.implements },
-  tests:      { color: '#E7B65C', label: EDGE_TYPE_LABELS.tests },
-  configures: { color: '#78869B', dash: '2,3', label: EDGE_TYPE_LABELS.configures },
-  co_changed: { color: '#F07878', dash: '4,3', label: EDGE_TYPE_LABELS.co_changed },
-  supersedes: { color: '#F07878', dash: '2,4', label: EDGE_TYPE_LABELS.supersedes },
+  imports:    { color: '#3B82F6', label: EDGE_TYPE_LABELS.imports },
+  calls:      { color: '#10B981', label: EDGE_TYPE_LABELS.calls },
+  extends:    { color: '#8B5CF6', dash: '5,3', label: EDGE_TYPE_LABELS.extends },
+  implements: { color: '#8B5CF6', dash: '5,3', label: EDGE_TYPE_LABELS.implements },
+  tests:      { color: '#F59E0B', label: EDGE_TYPE_LABELS.tests },
+  configures: { color: '#64748B', dash: '2,3', label: EDGE_TYPE_LABELS.configures },
+  co_changed: { color: '#EF4444', dash: '4,3', label: EDGE_TYPE_LABELS.co_changed },
+  supersedes: { color: '#EF4444', dash: '2,4', label: EDGE_TYPE_LABELS.supersedes },
 };
 
 const ALL_NODE_TYPES = Object.keys(NODE_TYPE_COLORS) as NodeType[];
@@ -24,51 +25,63 @@ interface GraphLegendProps {
 export const GraphLegend: React.FC<GraphLegendProps> = ({ className = '' }) => {
   return (
     <div
-      className={`bg-app-panel border border-app-border rounded-lg p-3 ${className}`}
+      className={`bg-white border border-blue-100 rounded-2xl p-5 shadow-lg ${className}`}
       aria-label="Graph legend"
     >
-      <div className="flex flex-wrap gap-4">
+      <div className="flex items-center gap-2 mb-3 pb-2.5 border-b border-gray-100">
+        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
+          <BookOpen className="w-3.5 h-3.5" />
+        </span>
+        <span className="text-xs font-extrabold uppercase tracking-wider text-blue-900">
+          Graph Legend & Symbols
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Node types */}
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-1.5 font-mono">
+        <div className="space-y-2">
+          <div className="text-[11px] font-extrabold uppercase tracking-wider text-gray-500">
             Node Types
           </div>
-          <div className="flex flex-wrap gap-x-3 gap-y-1">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {ALL_NODE_TYPES.map(type => (
-              <span key={type} className="flex items-center gap-1.5 text-[11px] text-text-secondary">
+              <span
+                key={type}
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-gray-50 border border-gray-100 text-xs font-semibold text-gray-800"
+              >
                 <span
-                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                  className="w-3 h-3 rounded-full shrink-0 shadow-xs"
                   style={{ backgroundColor: NODE_TYPE_COLORS[type] }}
                   aria-hidden
                 />
-                {NODE_TYPE_LABELS[type]}
+                <span className="capitalize">{NODE_TYPE_LABELS[type]}</span>
               </span>
             ))}
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="hidden sm:block w-px bg-app-border self-stretch" aria-hidden />
-
         {/* Edge types */}
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-1.5 font-mono">
+        <div className="space-y-2">
+          <div className="text-[11px] font-extrabold uppercase tracking-wider text-gray-500">
             Relationship Types
           </div>
-          <div className="flex flex-wrap gap-x-3 gap-y-1">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {ALL_EDGE_TYPES.map(type => {
               const style = EDGE_STYLES[type];
               return (
-                <span key={type} className="flex items-center gap-1.5 text-[11px] text-text-secondary">
-                  <svg width="22" height="10" aria-hidden>
+                <span
+                  key={type}
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-gray-50 border border-gray-100 text-xs font-semibold text-gray-800"
+                >
+                  <svg width="24" height="10" aria-hidden className="shrink-0">
                     <line
-                      x1="1" y1="5" x2="21" y2="5"
+                      x1="1" y1="5" x2="23" y2="5"
                       stroke={style.color}
-                      strokeWidth="1.5"
+                      strokeWidth="2"
                       strokeDasharray={style.dash}
                     />
                   </svg>
-                  {style.label}
+                  <span>{style.label}</span>
                 </span>
               );
             })}

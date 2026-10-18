@@ -33,34 +33,38 @@ export const RisksAndChecklist: React.FC<RisksAndChecklistProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Left Column: Potential Risks & Past Regressions */}
-      <div className="space-y-4">
+      <div className="space-y-6">
         {/* Potential Risks */}
-        <div className="bg-app-panel border border-app-border rounded-lg p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-text-primary flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-status-warning" />
+        <div className="bg-white border border-app-border rounded-2xl p-6 shadow-xs">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-app-border">
+            <h3 className="text-sm font-bold text-[#25324B] flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
+                <AlertTriangle className="w-4 h-4 stroke-[2]" />
+              </span>
               Potential Risks & Breakage Vectors
             </h3>
-            <Badge variant="outline" size="sm">Evidence-Grounded</Badge>
+            <span className="text-[10px] font-semibold text-[#4169E1] bg-[#E5EDFF] px-2 py-0.5 rounded-full border border-[#C9D9FF]">
+              Evidence Grounded
+            </span>
           </div>
 
           <div className="space-y-3">
             {result.potentialRisks.map((riskItem, idx) => (
               <div
                 key={idx}
-                className="p-3 rounded-lg bg-app-surface/50 border border-app-border"
+                className="p-4 rounded-xl bg-[#F8FAFC] border border-app-border shadow-2xs hover:bg-white hover:border-[#C9D9FF] transition-all"
               >
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className="text-xs font-semibold text-text-primary">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <span className="text-xs font-bold text-[#25324B]">
                     {riskItem.risk}
                   </span>
                   <Badge
                     variant={riskItem.level === 'high' ? 'error' : riskItem.level === 'medium' ? 'warning' : 'info'}
                     size="sm"
                   >
-                    {riskItem.level}
+                    {riskItem.level.toUpperCase()}
                   </Badge>
                 </div>
                 <p className="text-xs text-text-secondary leading-relaxed">
@@ -72,19 +76,21 @@ export const RisksAndChecklist: React.FC<RisksAndChecklistProps> = ({
         </div>
 
         {/* Historical Regressions */}
-        <div className="bg-app-panel border border-app-border rounded-lg p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-text-primary flex items-center gap-2">
-              <History className="w-4 h-4 text-accent-secondary" />
-              Relevant Past Regressions in this Area
+        <div className="bg-white border border-app-border rounded-2xl p-6 shadow-xs">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-app-border">
+            <h3 className="text-sm font-bold text-[#25324B] flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-[#EEE9FF] text-[#5546B8] border border-[#D9D1FC]">
+                <History className="w-4 h-4 stroke-[2]" />
+              </span>
+              Historical Regressions in Area
             </h3>
-            <span className="text-xs text-text-muted font-mono">
-              {result.pastRegressions.length} historical fixes
+            <span className="text-xs text-text-muted font-mono font-semibold">
+              {result.pastRegressions.length} verified fixes
             </span>
           </div>
 
           {result.pastRegressions.length === 0 ? (
-            <div className="p-4 text-center text-xs text-text-muted border border-dashed border-app-border rounded">
+            <div className="p-4 text-center text-xs text-text-muted border border-dashed border-app-border rounded-lg bg-white">
               No historical bugfixes or regressions recorded for this file.
             </div>
           ) : (
@@ -92,10 +98,10 @@ export const RisksAndChecklist: React.FC<RisksAndChecklistProps> = ({
               {result.pastRegressions.map((reg) => (
                 <div
                   key={reg.id}
-                  className="p-3 rounded-lg bg-app-surface/50 border border-app-border text-xs"
+                  className="p-3.5 rounded-lg bg-white border border-app-border text-xs shadow-2xs"
                 >
                   <div className="flex items-center justify-between font-mono text-xs mb-1.5">
-                    <span className="px-1.5 py-0.5 rounded bg-accent-secondary/15 text-accent-secondary border border-accent-secondary/30">
+                    <span className="px-1.5 py-0.5 rounded bg-app-subtleBlue text-accent-primary border border-accent-primary/20">
                       {reg.commitHash.substring(0, 7)}
                     </span>
                     <span className="text-[11px] text-text-muted">
@@ -105,7 +111,7 @@ export const RisksAndChecklist: React.FC<RisksAndChecklistProps> = ({
                   <div className="font-semibold text-text-primary mb-1">
                     {reg.summary}
                   </div>
-                  <p className="text-text-muted text-[11px]">
+                  <p className="text-text-secondary text-[11px]">
                     {reg.relevanceExplanation}
                   </p>
                 </div>
@@ -116,35 +122,37 @@ export const RisksAndChecklist: React.FC<RisksAndChecklistProps> = ({
       </div>
 
       {/* Right Column: Historical Co-changes & Analysis Limitations */}
-      <div className="space-y-4">
+      <div className="space-y-6">
         {/* Historical Co-changes */}
-        <div className="bg-app-panel border border-app-border rounded-lg p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-text-primary flex items-center gap-2">
-              <GitCommit className="w-4 h-4 text-status-info" />
-              Frequently Changed Together (Git History)
+        <div className="bg-white border border-app-border rounded-2xl p-6 shadow-xs">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-app-border">
+            <h3 className="text-sm font-bold text-[#25324B] flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-[#E5EDFF] text-[#4169E1] border border-[#C9D9FF]">
+                <GitCommit className="w-4 h-4 stroke-[2]" />
+              </span>
+              Coupled Files (Git Co-Change History)
             </h3>
-            <span className="text-xs text-text-muted font-mono">
+            <span className="text-xs text-text-muted font-mono font-semibold">
               {result.coChangedFiles.length} files
             </span>
           </div>
 
           {result.coChangedFiles.length === 0 ? (
-            <div className="p-4 text-center text-xs text-text-muted border border-dashed border-app-border rounded">
+            <div className="p-5 text-center text-xs text-text-muted border border-dashed border-app-border rounded-xl bg-[#F8FAFC]">
               No co-change coupling detected in Git history.
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {result.coChangedFiles.map((item, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-2.5 rounded-lg bg-app-surface/50 border border-app-border text-xs"
+                  className="flex items-center justify-between p-3.5 rounded-xl bg-[#F8FAFC] border border-app-border text-xs shadow-2xs hover:bg-white transition-all"
                 >
                   <div className="min-w-0 pr-2">
-                    <div className="font-mono font-medium text-text-primary truncate">
+                    <div className="font-mono font-bold text-[#25324B] truncate">
                       {item.relatedFilePath}
                     </div>
-                    <div className="text-[10px] text-text-muted italic truncate">
+                    <div className="text-[11px] text-text-secondary italic truncate mt-0.5">
                       {item.evidence.commitMessage}
                     </div>
                   </div>
@@ -160,25 +168,27 @@ export const RisksAndChecklist: React.FC<RisksAndChecklistProps> = ({
         </div>
 
         {/* Manual Verification Checklist */}
-        <div className="bg-app-panel border border-app-border rounded-lg p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-text-primary flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-status-success" />
-              Manual Verification Checklist
+        <div className="bg-white border border-app-border rounded-2xl p-6 shadow-xs">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-app-border">
+            <h3 className="text-sm font-bold text-[#25324B] flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-[#DDF6EA] text-[#1E7E50] border border-[#B7EDD2]">
+                <ShieldCheck className="w-4 h-4 stroke-[2]" />
+              </span>
+              Pre-Release Verification Checklist
             </h3>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3.5">
             {result.manualVerificationAreas.map((area, idx) => (
-              <div key={idx} className="border-l-2 border-accent-primary/60 pl-3 py-1">
-                <div className="text-xs font-semibold text-text-primary mb-1">
+              <div key={idx} className="border-l-3 border-[#4169E1] bg-[#E5EDFF]/40 rounded-r-xl p-3.5 border border-l-0 border-[#C9D9FF]">
+                <div className="text-xs font-bold text-[#1E293B] mb-1.5">
                   {area.area}
                 </div>
-                <ul className="space-y-1 text-xs text-text-secondary">
+                <ul className="space-y-1.5 text-xs text-text-secondary">
                   {area.checklist.map((item, cIdx) => (
-                    <li key={cIdx} className="flex items-start gap-1.5">
-                      <span className="text-accent-primary">•</span>
-                      <span>{item}</span>
+                    <li key={cIdx} className="flex items-start gap-2">
+                      <span className="text-[#4169E1] font-bold">•</span>
+                      <span className="leading-snug">{item}</span>
                     </li>
                   ))}
                 </ul>
@@ -188,33 +198,34 @@ export const RisksAndChecklist: React.FC<RisksAndChecklistProps> = ({
         </div>
 
         {/* Limitations & Save Action */}
-        <div className="bg-app-panel border border-app-border rounded-lg p-5">
+        <div className="bg-white border border-app-border rounded-2xl p-6 shadow-xs">
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
-              <Info className="w-4 h-4 text-text-muted" />
-              Documented Analysis Limitations
+            <h4 className="text-xs font-bold text-[#25324B] flex items-center gap-1.5">
+              <Info className="w-4 h-4 text-[#4169E1]" />
+              Documented Analysis Boundaries
             </h4>
           </div>
-          <ul className="space-y-1.5 text-[11px] text-text-muted mb-4 font-mono">
+          <ul className="space-y-2 text-xs text-text-secondary mb-5">
             {result.limitations.map((lim, i) => (
-              <li key={i} className="flex items-start gap-2">
-                <span className="text-status-warning">•</span>
-                <span>{lim}</span>
+              <li key={i} className="flex items-start gap-2 bg-[#F8FAFC] p-2.5 rounded-lg border border-app-border">
+                <span className="text-[#D97706] font-bold">•</span>
+                <span className="leading-snug">{lim}</span>
               </li>
             ))}
           </ul>
 
-          <div className="pt-3 border-t border-app-border flex items-center justify-between">
-            <span className="text-xs text-text-muted">
-              Preserve this impact assessment for code reviews
+          <div className="pt-4 border-t border-app-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <span className="text-xs text-text-secondary">
+              Persist this blast radius evaluation for audit trails & PR reviews
             </span>
             <Button
-              variant={saved ? 'secondary' : 'outline'}
+              variant={saved ? 'secondary' : 'primary'}
               size="sm"
               icon={saved ? <Check className="w-3.5 h-3.5 text-status-success" /> : <Bookmark className="w-3.5 h-3.5" />}
               onClick={handleSave}
+              className="shadow-2xs shrink-0"
             >
-              {saved ? 'Investigation Saved' : 'Save Investigation'}
+              {saved ? 'Investigation Saved' : 'Save to History'}
             </Button>
           </div>
         </div>

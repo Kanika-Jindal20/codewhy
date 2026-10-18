@@ -37,6 +37,28 @@ const STATUS_VARIANTS: Record<DecisionTimelineStatus, 'default' | 'success' | 'w
   possible_supersession: 'warning', confirmed_supersession: 'success', conflicting_evidence: 'error', unresolved: 'default',
 };
 
+/** Maps each status to vivid pill colors */
+const STATUS_PILL: Record<DecisionTimelineStatus, { bg: string; text: string; border: string; dot: string }> = {
+  supported_decision:    { bg: 'bg-emerald-100',  text: 'text-emerald-700',  border: 'border-emerald-300',  dot: 'bg-emerald-500' },
+  possible_decision:     { bg: 'bg-amber-100',    text: 'text-amber-700',    border: 'border-amber-300',    dot: 'bg-amber-500' },
+  possible_supersession: { bg: 'bg-amber-100',    text: 'text-amber-700',    border: 'border-amber-300',    dot: 'bg-amber-500' },
+  confirmed_supersession:{ bg: 'bg-amber-100',    text: 'text-amber-700',    border: 'border-amber-300',    dot: 'bg-amber-500' },
+  conflicting_evidence:  { bg: 'bg-red-100',      text: 'text-red-700',      border: 'border-red-300',      dot: 'bg-red-500' },
+  historical_event:      { bg: 'bg-teal-100',     text: 'text-teal-700',     border: 'border-teal-300',     dot: 'bg-teal-500' },
+  unresolved:            { bg: 'bg-gray-100',     text: 'text-gray-600',     border: 'border-gray-300',     dot: 'bg-gray-400' },
+};
+
+/** Maps each status to the left-border accent color on list cards */
+const STATUS_BORDER: Record<DecisionTimelineStatus, string> = {
+  supported_decision:    'border-l-emerald-500',
+  possible_decision:     'border-l-amber-400',
+  possible_supersession: 'border-l-amber-400',
+  confirmed_supersession:'border-l-amber-500',
+  conflicting_evidence:  'border-l-red-500',
+  historical_event:      'border-l-teal-500',
+  unresolved:            'border-l-gray-400',
+};
+
 interface TimelinePayload { repoId: string; repoName: string; isDemoData: boolean; events: DecisionTimelineEvent[]; }
 
 export function DecisionTimelineClient() {
@@ -85,50 +107,395 @@ export function DecisionTimelineClient() {
   const components = repo.nodes.filter((node) => node.type !== 'commit').map((node) => ({ id: node.id, label: `${node.label} · ${node.filePath}` }));
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-12">
-      <header className="flex flex-col gap-3 border-b border-app-border pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-1"><span className="p-1.5 rounded-lg bg-accent-secondary/20 text-accent-secondary border border-accent-secondary/30"><History className="w-5 h-5" /></span><h1 className="text-2xl font-bold tracking-tight">Decision Timeline</h1></div>
-          <p className="text-xs text-text-muted">Trace repository events to their original sources. A later change does not by itself prove a decision was replaced.</p>
+    <div className="font-['Inter',sans-serif] max-w-7xl mx-auto space-y-6 pb-12">
+
+      {/* ── HEADER BANNER ── */}
+      <header className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-teal-600 to-cyan-600 px-7 py-6 shadow-lg">
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_top_right,_white_0%,_transparent_70%)]" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <span className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm shadow-md border border-white/30">
+              <History className="w-7 h-7 text-white stroke-[2]" />
+            </span>
+            <div>
+              <h1 className="text-2xl font-extrabold tracking-tight text-white">Decision Timeline</h1>
+              <p className="text-sm text-teal-100 mt-0.5">
+                Trace repository design decisions, architectural pivots, and component evolution backed by AST and commit records.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/25 px-4 py-2.5 shadow-sm self-start sm:self-auto">
+            <GitCommitHorizontal className="w-4 h-4 text-teal-100" />
+            <span className="font-bold text-white text-sm">{repo.repoName}</span>
+            {repo.isDemo && (
+              <span className="ml-1 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-amber-900 border border-amber-300">
+                Demo
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2 rounded-lg border border-app-border bg-app-panel px-3 py-2 text-xs"><GitCommitHorizontal className="w-4 h-4 text-text-muted" /><span className="text-text-primary">{repo.repoName}</span>{repo.isDemo && <Badge variant="warning">Demo data</Badge>}</div>
       </header>
 
-      {repo.isDemo && <Alert type="warning" title="Sample repository history">Timeline entries use illustrative sample records. No live GitHub repository or engineering discussion has been connected.</Alert>}
+      {repo.isDemo && (
+        <Alert type="warning" title="Sample repository history">
+          Timeline entries use illustrative sample records. No live GitHub repository or engineering discussion has been connected.
+        </Alert>
+      )}
       {error && <Alert type="error" title="Timeline unavailable">{error}</Alert>}
 
-      <section className="grid grid-cols-1 gap-3 rounded-xl border border-app-border bg-app-panel p-4 sm:grid-cols-2 xl:grid-cols-6" aria-label="Timeline filters">
-        <label className="text-[11px] text-text-muted">Component<select value={componentId} onChange={(event) => setComponentId(event.target.value)} className="mt-1 block w-full rounded-md border border-app-border bg-app-bg px-2.5 py-2 text-xs text-text-primary"><option value="">All components</option>{components.map((component) => <option key={component.id} value={component.id}>{component.label}</option>)}</select></label>
-        <label className="text-[11px] text-text-muted">Status<select value={status} onChange={(event) => setStatus(event.target.value as DecisionTimelineStatus | 'all')} className="mt-1 block w-full rounded-md border border-app-border bg-app-bg px-2.5 py-2 text-xs text-text-primary">{STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-        <label className="text-[11px] text-text-muted">Source type<select value={sourceType} onChange={(event) => setSourceType(event.target.value as EvidenceSource['type'] | 'all')} className="mt-1 block w-full rounded-md border border-app-border bg-app-bg px-2.5 py-2 text-xs text-text-primary">{SOURCE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-        <label className="text-[11px] text-text-muted">From<input type="date" value={from} onChange={(event) => setFrom(event.target.value)} className="mt-1 block w-full rounded-md border border-app-border bg-app-bg px-2.5 py-2 text-xs text-text-primary" /></label>
-        <label className="text-[11px] text-text-muted">To<input type="date" value={to} onChange={(event) => setTo(event.target.value)} className="mt-1 block w-full rounded-md border border-app-border bg-app-bg px-2.5 py-2 text-xs text-text-primary" /></label>
-        <label className="text-[11px] text-text-muted">Search<input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="File, commit, event…" className="mt-1 block w-full rounded-md border border-app-border bg-app-bg px-2.5 py-2 text-xs text-text-primary placeholder:text-text-muted" /></label>
+      {/* ── FILTER TOOLBAR ── */}
+      <section
+        className="rounded-2xl border border-teal-100 bg-white p-5 shadow-lg"
+        aria-label="Timeline filters"
+      >
+        <div className="flex items-center gap-2 mb-4 border-l-4 border-teal-500 pl-3">
+          <Search className="w-4 h-4 text-teal-600" />
+          <span className="text-sm font-bold text-teal-700">Filter Timeline</span>
+          <span className="text-xs text-teal-500">— narrow results by component, status, date or keyword</span>
+        </div>
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-6">
+          {/* Component Focus */}
+          <div>
+            <label className="text-[11px] font-bold text-teal-700 uppercase tracking-wider block mb-1.5">
+              Component Focus
+            </label>
+            <select
+              value={componentId}
+              onChange={(event) => setComponentId(event.target.value)}
+              className="w-full rounded-xl border border-teal-200 bg-teal-50/40 px-3 py-2 text-xs text-gray-800 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-400/20 transition-all shadow-sm font-medium"
+            >
+              <option value="">All components</option>
+              {components.map((component) => (
+                <option key={component.id} value={component.id}>{component.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Evolution Status */}
+          <div>
+            <label className="text-[11px] font-bold text-teal-700 uppercase tracking-wider block mb-1.5">
+              Evolution Status
+            </label>
+            <select
+              value={status}
+              onChange={(event) => setStatus(event.target.value as DecisionTimelineStatus | 'all')}
+              className="w-full rounded-xl border border-teal-200 bg-teal-50/40 px-3 py-2 text-xs text-gray-800 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-400/20 transition-all shadow-sm font-medium"
+            >
+              {STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Source Evidence Type */}
+          <div>
+            <label className="text-[11px] font-bold text-teal-700 uppercase tracking-wider block mb-1.5">
+              Source Evidence Type
+            </label>
+            <select
+              value={sourceType}
+              onChange={(event) => setSourceType(event.target.value as EvidenceSource['type'] | 'all')}
+              className="w-full rounded-xl border border-teal-200 bg-teal-50/40 px-3 py-2 text-xs text-gray-800 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-400/20 transition-all shadow-sm font-medium"
+            >
+              {SOURCE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* From Date */}
+          <div>
+            <label className="text-[11px] font-bold text-teal-700 uppercase tracking-wider block mb-1.5">
+              From Date
+            </label>
+            <input
+              type="date"
+              value={from}
+              onChange={(event) => setFrom(event.target.value)}
+              className="w-full rounded-xl border border-teal-200 bg-teal-50/40 px-3 py-2 text-xs text-gray-800 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-400/20 transition-all shadow-sm font-medium"
+            />
+          </div>
+
+          {/* To Date */}
+          <div>
+            <label className="text-[11px] font-bold text-teal-700 uppercase tracking-wider block mb-1.5">
+              To Date
+            </label>
+            <input
+              type="date"
+              value={to}
+              onChange={(event) => setTo(event.target.value)}
+              className="w-full rounded-xl border border-teal-200 bg-teal-50/40 px-3 py-2 text-xs text-gray-800 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-400/20 transition-all shadow-sm font-medium"
+            />
+          </div>
+
+          {/* Search */}
+          <div>
+            <label className="text-[11px] font-bold text-teal-700 uppercase tracking-wider block mb-1.5">
+              Search Keywords
+            </label>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-teal-400 pointer-events-none" />
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="File, commit, event…"
+                className="w-full rounded-xl border border-teal-200 bg-teal-50/40 pl-8 pr-3 py-2 text-xs text-gray-800 placeholder:text-teal-300 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-400/20 transition-all shadow-sm font-medium"
+              />
+            </div>
+          </div>
+        </div>
       </section>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-5">
-        <section className="xl:col-span-2" aria-label="Chronological repository events">
-          <div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-semibold">Repository history</h2><span className="text-[11px] text-text-muted">{visibleEvents.length} event{visibleEvents.length === 1 ? '' : 's'}</span></div>
-          {loading ? <div role="status" className="flex items-center gap-2 rounded-lg border border-app-border bg-app-panel p-4 text-xs text-text-secondary"><LoaderCircle className="h-4 w-4 animate-spin" />Loading timeline…</div>
-            : visibleEvents.length === 0 ? <div className="rounded-lg border border-dashed border-app-border p-6 text-center"><CalendarClock className="mx-auto h-5 w-5 text-text-muted" /><p className="mt-2 text-sm text-text-secondary">No timeline records match these filters.</p><p className="mt-1 text-xs text-text-muted">Decision history appears only when source records or explicit graph relationships are available.</p></div>
-              : <ol className="space-y-2">{visibleEvents.map((event) => <li key={event.id}><button type="button" onClick={() => setSelectedId(event.id)} aria-pressed={selected?.id === event.id} className={`w-full rounded-lg border p-3 text-left transition ${selected?.id === event.id ? 'border-accent-primary/50 bg-accent-primary/10' : 'border-app-border bg-app-panel hover:border-accent-primary/30'}`}>
-                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2"><span className="font-mono text-[10px] text-text-muted">{event.date ? new Date(event.date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Date unavailable'}</span><Badge variant={STATUS_VARIANTS[event.status]}>{event.status.replaceAll('_', ' ')}</Badge></div>
-                <p className="text-xs font-semibold text-text-primary">{event.title}</p><p className="mt-1 line-clamp-2 text-[11px] text-text-secondary">{event.componentLabels.join(' · ')}</p>
-              </button></li>)}</ol>}
+      {/* ── MAIN CONTENT GRID ── */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
+
+        {/* ── LEFT COLUMN: Event List ── */}
+        <section className="xl:col-span-2 space-y-3" aria-label="Chronological repository events">
+          {/* List header */}
+          <div className="flex items-center justify-between px-1 pb-1">
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-teal-500 text-white">
+                <CalendarClock className="w-3.5 h-3.5" />
+              </span>
+              <h2 className="text-sm font-extrabold text-gray-800 uppercase tracking-wider">
+                Chronological History
+              </h2>
+            </div>
+            <span className="rounded-full bg-teal-100 text-teal-700 border border-teal-200 px-2.5 py-0.5 text-xs font-bold">
+              {visibleEvents.length} {visibleEvents.length === 1 ? 'event' : 'events'}
+            </span>
+          </div>
+
+          {/* Loading */}
+          {loading ? (
+            <div role="status" className="flex items-center gap-3 rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50 to-cyan-50 p-5 shadow-sm">
+              <LoaderCircle className="h-5 w-5 animate-spin text-teal-500" />
+              <div>
+                <p className="text-sm font-bold text-teal-700">Loading timeline…</p>
+                <p className="text-xs text-teal-500">Fetching repository history records</p>
+              </div>
+            </div>
+
+          /* Empty state */
+          ) : visibleEvents.length === 0 ? (
+            <div className="rounded-2xl border-2 border-dashed border-teal-200 bg-gradient-to-br from-teal-50 to-cyan-50/50 p-10 text-center">
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-100 border border-teal-200 shadow-sm">
+                <CalendarClock className="h-7 w-7 text-teal-500" />
+              </div>
+              <p className="text-sm font-bold text-teal-700">No timeline records found</p>
+              <p className="mt-1 text-xs text-teal-500">Try clearing the search query or adjusting the date range.</p>
+            </div>
+
+          /* Event cards */
+          ) : (
+            <ol className="space-y-2.5">
+              {visibleEvents.map((event) => {
+                const isSelected = selected?.id === event.id;
+                const pill = STATUS_PILL[event.status];
+                const leftBorder = STATUS_BORDER[event.status];
+                return (
+                  <li key={event.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(event.id)}
+                      aria-pressed={isSelected}
+                      className={`w-full rounded-2xl border-l-4 border border-gray-100 p-4 text-left transition-all shadow-sm ${leftBorder} ${
+                        isSelected
+                          ? 'bg-gradient-to-br from-teal-50 to-cyan-50 border-teal-300 ring-2 ring-teal-400/25 shadow-md'
+                          : 'bg-white hover:border-teal-200 hover:bg-teal-50/30'
+                      }`}
+                    >
+                      {/* Date chip + Status pill */}
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <span className="rounded-full bg-teal-500 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                          {event.date
+                            ? new Date(event.date).toLocaleDateString(undefined, { dateStyle: 'medium' })
+                            : 'Date unavailable'}
+                        </span>
+                        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${pill.bg} ${pill.text} ${pill.border}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${pill.dot}`} />
+                          {event.status.replaceAll('_', ' ')}
+                        </span>
+                      </div>
+
+                      {/* Title */}
+                      <p className={`text-xs font-bold line-clamp-1 ${isSelected ? 'text-teal-700' : 'text-gray-800'}`}>
+                        {event.title}
+                      </p>
+
+                      {/* Component labels */}
+                      {event.componentLabels.length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {event.componentLabels.map((label, i) => (
+                            <span
+                              key={i}
+                              className="rounded-md bg-gray-100 border border-gray-200 px-1.5 py-0.5 font-mono text-[10px] text-gray-500"
+                            >
+                              {label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
         </section>
 
+        {/* ── RIGHT COLUMN: Event Detail ── */}
         <section className="space-y-4 xl:col-span-3" aria-label="Selected timeline event details">
-          {selected ? <>
-            <div className="rounded-xl border border-app-border bg-app-panel p-4 sm:p-5">
-              <div className="flex flex-wrap items-start justify-between gap-2"><div><h2 className="text-base font-semibold text-text-primary">{selected.title}</h2><p className="mt-1 text-xs text-text-muted">{selected.componentLabels.length ? `Affected: ${selected.componentLabels.join(', ')}` : 'No component link was recorded.'}</p></div><Badge variant={STATUS_VARIANTS[selected.status]}>{selected.status.replaceAll('_', ' ')}</Badge></div>
-              <p className="mt-4 text-sm leading-6 text-text-secondary">{selected.summary}</p>
-              <div className="mt-4"><h3 className="mb-2 text-xs font-semibold text-text-primary">Source evidence ({selected.evidence.length})</h3>{selected.evidence.length ? <div className="space-y-2">{selected.evidence.map((item, index) => <EvidenceCard key={`${item.id}-${index}`} evidence={{ ...item, isSimulatedDemoData: item.isSimulatedDemoData ?? repo.isDemo }} compact={selected.evidence.length > 3} />)}</div> : <p className="rounded-lg border border-dashed border-app-border p-3 text-xs text-text-muted">No source evidence is attached to this event.</p>}</div>
+          {selected ? (
+            <>
+              {/* Main detail card */}
+              <div className="rounded-2xl border border-teal-100 bg-white shadow-lg overflow-hidden">
+                {/* Card top accent bar */}
+                <div className="h-1.5 w-full bg-gradient-to-r from-teal-500 to-cyan-500" />
+
+                <div className="p-6 sm:p-7">
+                  {/* Title row */}
+                  <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-100 pb-5">
+                    <div className="flex-1 min-w-0">
+                      <h2 className="text-xl font-extrabold text-gray-900 leading-tight">{selected.title}</h2>
+                      {selected.componentLabels.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {selected.componentLabels.map((label, i) => (
+                            <span
+                              key={i}
+                              className="rounded-md bg-teal-50 border border-teal-200 px-2 py-0.5 font-mono text-[11px] text-teal-700 font-medium"
+                            >
+                              {label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {selected.componentLabels.length === 0 && (
+                        <p className="mt-1 text-xs text-gray-400 font-mono">No explicit component link was recorded.</p>
+                      )}
+                    </div>
+                    {/* Large status badge */}
+                    <span className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide shadow-sm flex-shrink-0
+                      ${STATUS_PILL[selected.status].bg} ${STATUS_PILL[selected.status].text} ${STATUS_PILL[selected.status].border}`}>
+                      <span className={`h-2 w-2 rounded-full ${STATUS_PILL[selected.status].dot}`} />
+                      {selected.status.replaceAll('_', ' ')}
+                    </span>
+                  </div>
+
+                  {/* Summary block */}
+                  <div className="mt-5">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-teal-600 mb-2">
+                      Decision Summary
+                    </p>
+                    <div className="rounded-xl bg-gradient-to-br from-teal-50 to-cyan-50/60 border border-teal-100 p-4">
+                      <p className="text-sm leading-relaxed text-gray-700">{selected.summary}</p>
+                    </div>
+                  </div>
+
+                  {/* Evidence section */}
+                  <div className="mt-6 border-t border-gray-100 pt-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-teal-500 text-white shadow-sm">
+                          <Search className="w-3.5 h-3.5" />
+                        </span>
+                        <h3 className="text-sm font-extrabold text-gray-800">Source Evidence Records</h3>
+                      </div>
+                      <span className="rounded-full bg-teal-100 text-teal-700 border border-teal-200 px-2.5 py-0.5 text-xs font-bold">
+                        {selected.evidence.length} {selected.evidence.length === 1 ? 'item' : 'items'}
+                      </span>
+                    </div>
+
+                    {selected.evidence.length > 0 ? (
+                      <div className="space-y-2.5">
+                        {selected.evidence.map((item, index) => (
+                          <EvidenceCard
+                            key={`${item.id}-${index}`}
+                            evidence={{ ...item, isSimulatedDemoData: item.isSimulatedDemoData ?? repo.isDemo }}
+                            compact={selected.evidence.length > 3}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border-2 border-dashed border-teal-200 bg-teal-50/40 p-6 text-center">
+                        <p className="text-sm font-bold text-teal-600">No evidence attached</p>
+                        <p className="mt-1 text-xs text-teal-400">No source evidence is attached to this event.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Related events comparison */}
+              {related && (
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  {/* Later record */}
+                  <div className="rounded-2xl border-l-4 border-l-teal-500 border border-teal-100 bg-gradient-to-br from-teal-50 to-cyan-50/60 p-5 shadow-sm">
+                    <div className="flex items-center gap-1.5 mb-3">
+                      <span className="h-2 w-2 rounded-full bg-teal-500" />
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-teal-600">Later record</p>
+                    </div>
+                    <p className="text-sm font-bold text-gray-800">{selected.title}</p>
+                    <p className="mt-1 text-xs font-mono text-teal-600 bg-teal-100 border border-teal-200 rounded-full px-2 py-0.5 inline-block">
+                      {selected.date ? new Date(selected.date).toLocaleDateString() : 'Date unavailable'}
+                    </p>
+                    {selected.evidence.length > 0 ? (
+                      <div className="mt-3 space-y-2">
+                        {selected.evidence.map((item, index) => (
+                          <EvidenceCard
+                            key={`${item.id}-${index}`}
+                            evidence={{ ...item, isSimulatedDemoData: item.isSimulatedDemoData ?? repo.isDemo }}
+                            compact
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-xs text-teal-500 italic">No evidence attached.</p>
+                    )}
+                  </div>
+
+                  {/* Earlier linked record */}
+                  <div className="rounded-2xl border-l-4 border-l-cyan-500 border border-cyan-100 bg-gradient-to-br from-cyan-50 to-teal-50/60 p-5 shadow-sm">
+                    <div className="flex items-center gap-1.5 mb-3">
+                      <span className="h-2 w-2 rounded-full bg-cyan-500" />
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-cyan-600">Earlier linked record</p>
+                    </div>
+                    <p className="text-sm font-bold text-gray-800">{related.title}</p>
+                    <p className="mt-1 text-xs font-mono text-cyan-600 bg-cyan-100 border border-cyan-200 rounded-full px-2 py-0.5 inline-block">
+                      {related.date ? new Date(related.date).toLocaleDateString() : 'Date unavailable'}
+                    </p>
+                    {related.evidence.length > 0 ? (
+                      <div className="mt-3 space-y-2">
+                        {related.evidence.map((item, index) => (
+                          <EvidenceCard
+                            key={`${item.id}-${index}`}
+                            evidence={{ ...item, isSimulatedDemoData: item.isSimulatedDemoData ?? repo.isDemo }}
+                            compact
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-xs text-cyan-500 italic">No evidence attached.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
+
+          /* No event selected */
+          ) : (
+            <div className="rounded-2xl border-2 border-dashed border-teal-200 bg-gradient-to-br from-teal-50 to-cyan-50/50 p-16 text-center shadow-sm">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-100 border border-teal-200 shadow-md">
+                <AlertTriangle className="h-8 w-8 text-teal-500" />
+              </div>
+              <p className="text-base font-extrabold text-teal-700">No event selected</p>
+              <p className="mt-2 text-sm text-teal-500 max-w-xs mx-auto">
+                Select any timeline record on the left to inspect its evidence and relationships.
+              </p>
             </div>
-            {related && <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <div className="rounded-xl border border-app-border bg-app-panel p-4"><p className="mb-3 text-xs font-semibold text-text-primary">Later record</p><p className="text-sm font-medium">{selected.title}</p><p className="mt-1 text-[11px] text-text-muted">{selected.date ? new Date(selected.date).toLocaleDateString() : 'Date unavailable'}</p>{selected.evidence.length ? <div className="mt-3 space-y-2">{selected.evidence.map((item, index) => <EvidenceCard key={`${item.id}-${index}`} evidence={{ ...item, isSimulatedDemoData: item.isSimulatedDemoData ?? repo.isDemo }} compact /></div> : <p className="mt-2 text-xs text-text-muted">No evidence attached.</p>}</div>
-              <div className="rounded-xl border border-app-border bg-app-panel p-4"><p className="mb-3 text-xs font-semibold text-text-primary">Earlier linked record</p><p className="text-sm font-medium">{related.title}</p><p className="mt-1 text-[11px] text-text-muted">{related.date ? new Date(related.date).toLocaleDateString() : 'Date unavailable'}</p>{related.evidence.length ? <div className="mt-3 space-y-2">{related.evidence.map((item, index) => <EvidenceCard key={`${item.id}-${index}`} evidence={{ ...item, isSimulatedDemoData: item.isSimulatedDemoData ?? repo.isDemo }} compact /></div> : <p className="mt-2 text-xs text-text-muted">No evidence attached.</p>}</div>
-            </div>}
-          </> : <div className="rounded-xl border border-dashed border-app-border p-8 text-center text-sm text-text-muted"><AlertTriangle className="mx-auto mb-2 h-5 w-5" />Select a timeline event to inspect its evidence.</div>}
+          )}
         </section>
       </div>
     </div>

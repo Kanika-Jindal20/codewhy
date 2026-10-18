@@ -16,28 +16,28 @@ export const Alert: React.FC<AlertProps> = ({
 }) => {
   const styles = {
     info: {
-      border: 'border-status-info/30',
-      bg: 'bg-status-info/10',
-      text: 'text-status-info',
-      icon: <Info className="w-5 h-5 text-status-info shrink-0 mt-0.5" />,
+      border: 'border-[#D3E0F6]',
+      bg: 'bg-app-subtleBlue',
+      text: 'text-[#1D3B7A]',
+      icon: <Info className="w-5 h-5 text-accent-primary shrink-0 mt-0.5 stroke-[1.75]" />,
     },
     warning: {
-      border: 'border-status-warning/30',
-      bg: 'bg-status-warning/10',
-      text: 'text-status-warning',
-      icon: <AlertTriangle className="w-5 h-5 text-status-warning shrink-0 mt-0.5" />,
+      border: 'border-amber-200',
+      bg: 'bg-amber-50/70',
+      text: 'text-amber-950',
+      icon: <AlertTriangle className="w-5 h-5 text-status-warning shrink-0 mt-0.5 stroke-[1.75]" />,
     },
     error: {
-      border: 'border-status-error/30',
-      bg: 'bg-status-error/10',
-      text: 'text-status-error',
-      icon: <AlertCircle className="w-5 h-5 text-status-error shrink-0 mt-0.5" />,
+      border: 'border-rose-200',
+      bg: 'bg-rose-50/70',
+      text: 'text-rose-950',
+      icon: <AlertCircle className="w-5 h-5 text-status-error shrink-0 mt-0.5 stroke-[1.75]" />,
     },
     success: {
-      border: 'border-status-success/30',
-      bg: 'bg-status-success/10',
-      text: 'text-status-success',
-      icon: <CheckCircle2 className="w-5 h-5 text-status-success shrink-0 mt-0.5" />,
+      border: 'border-emerald-200',
+      bg: 'bg-emerald-50/70',
+      text: 'text-emerald-950',
+      icon: <CheckCircle2 className="w-5 h-5 text-status-success shrink-0 mt-0.5 stroke-[1.75]" />,
     },
   }[type];
 

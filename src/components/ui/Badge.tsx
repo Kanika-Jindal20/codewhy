@@ -2,7 +2,7 @@ import React from 'react';
 
 interface BadgeProps {
   children: React.ReactNode;
-  variant?: 'default' | 'success' | 'warning' | 'error' | 'info' | 'outline' | 'purple';
+  variant?: 'default' | 'success' | 'warning' | 'error' | 'info' | 'purple' | 'teal' | 'mint' | 'peach' | 'outline';
   size?: 'sm' | 'md';
   icon?: React.ReactNode;
   className?: string;
@@ -15,21 +15,24 @@ export const Badge: React.FC<BadgeProps> = ({
   icon,
   className = '',
 }) => {
-  const sizeStyles = size === 'sm' ? 'text-xs px-2 py-0.5' : 'text-xs px-2.5 py-1';
+  const sizeStyles = size === 'sm' ? 'text-[11px] px-2.5 py-0.5' : 'text-xs px-3 py-1';
   
   const variantStyles = {
-    default: 'bg-app-surface text-text-secondary border-app-border',
-    success: 'bg-status-success/15 text-status-success border-status-success/30',
-    warning: 'bg-status-warning/15 text-status-warning border-status-warning/30',
-    error: 'bg-status-error/15 text-status-error border-status-error/30',
-    info: 'bg-status-info/15 text-status-info border-status-info/30',
-    purple: 'bg-accent-secondary/15 text-accent-secondary border-accent-secondary/30',
-    outline: 'bg-transparent text-text-muted border-app-border',
+    default: 'bg-white text-text-secondary border-app-border shadow-2xs',
+    success: 'bg-[#ECFDF5] text-emerald-800 border-emerald-200 font-semibold',
+    warning: 'bg-[#FFFBEB] text-amber-900 border-amber-300 font-semibold',
+    error: 'bg-[#FEF2F2] text-rose-800 border-rose-200 font-semibold',
+    info: 'bg-[#EBF2FF] text-[#2563EB] border-[#BFDBFE] font-semibold',
+    purple: 'bg-[#F5F3FF] text-[#7C3AED] border-[#DDD6FE] font-semibold',
+    teal: 'bg-[#F0FDFA] text-[#0D9488] border-[#99F6E4] font-semibold',
+    mint: 'bg-[#ECFDF5] text-[#059669] border-[#A7F3D0] font-semibold',
+    peach: 'bg-[#FFF7ED] text-[#C2410C] border-[#FED7AA] font-semibold',
+    outline: 'bg-white/80 text-text-secondary border-app-border',
   }[variant];
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 font-medium border rounded-md font-mono ${sizeStyles} ${variantStyles} ${className}`}
+      className={`inline-flex items-center gap-1.5 font-medium border rounded-md ${sizeStyles} ${variantStyles} ${className}`}
     >
       {icon}
       {children}

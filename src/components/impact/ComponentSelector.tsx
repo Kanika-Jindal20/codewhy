@@ -40,49 +40,57 @@ export const ComponentSelector: React.FC<ComponentSelectorProps> = ({
   };
 
   return (
-    <div className="bg-app-panel border border-app-border rounded-lg p-4">
-      <div className="flex items-center justify-between mb-3">
-        <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-          1. Select Target Component to Modify
-        </label>
-        <span className="text-xs text-text-muted font-mono">
-          {filteredNodes.length} symbols found
+    <div className="bg-white border border-app-border rounded-2xl p-5 sm:p-6 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-app-border">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#E5EDFF] text-[#4169E1] text-xs font-bold">1</span>
+            <h2 className="text-sm font-bold text-[#25324B]">
+              Select Target Component
+            </h2>
+          </div>
+          <p className="text-xs text-text-secondary mt-0.5">
+            Choose any symbol, function, or source file to simulate blast radius & architectural impact
+          </p>
+        </div>
+        <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-full bg-[#F8FAFC] border border-app-border text-text-secondary self-start sm:self-auto">
+          {filteredNodes.length} symbols discovered
         </span>
       </div>
 
       {/* Search Input */}
-      <div className="relative mb-3">
-        <Search className="w-4 h-4 text-text-muted absolute left-3 top-2.5" />
+      <div className="relative mb-3.5">
+        <Search className="w-4 h-4 text-text-muted absolute left-3.5 top-3" />
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by file path or symbol name (e.g. jwt.ts, paymentService)..."
-          className="w-full bg-app-surface border border-app-border rounded-md pl-9 pr-3 py-1.5 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent-primary"
+          placeholder="Filter by file path or symbol name (e.g. jwt.ts, paymentService)..."
+          className="w-full bg-[#F8FAFC] border border-app-border rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-[#4169E1] focus:ring-2 focus:ring-[#4169E1]/15 focus:bg-white transition-all shadow-2xs font-mono"
         />
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-1.5 mb-3 overflow-x-auto pb-1 text-[11px]">
+      <div className="flex items-center gap-2 mb-3.5 overflow-x-auto pb-1 text-xs">
         {['all', 'file', 'function', 'config', 'test'].map((type) => (
           <button
             key={type}
             onClick={() => setFilterType(type)}
-            className={`px-2.5 py-1 rounded capitalize font-medium transition-colors ${
+            className={`px-3 py-1.5 rounded-lg capitalize font-semibold transition-all ${
               filterType === type
-                ? 'bg-accent-primary text-white'
-                : 'bg-app-surface text-text-muted hover:text-text-primary border border-app-border/60'
+                ? 'bg-[#E5EDFF] text-[#4169E1] border border-[#C9D9FF] shadow-2xs'
+                : 'bg-white text-text-secondary hover:text-text-primary border border-app-border hover:bg-[#F8FAFC]'
             }`}
           >
-            {type}
+            {type === 'all' ? 'All Types' : type}
           </button>
         ))}
       </div>
 
       {/* Component List */}
-      <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+      <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
         {filteredNodes.length === 0 ? (
-          <div className="py-6 text-center text-xs text-text-muted">
+          <div className="py-8 text-center text-xs text-text-muted bg-[#F8FAFC] rounded-xl border border-dashed border-app-border">
             No components match &ldquo;{search}&rdquo;
           </div>
         ) : (
@@ -93,19 +101,23 @@ export const ComponentSelector: React.FC<ComponentSelectorProps> = ({
               <button
                 key={node.id}
                 onClick={() => onSelectNode(node)}
-                className={`w-full text-left p-2.5 rounded-md border transition-all flex items-start justify-between gap-3 ${
+                className={`w-full text-left p-3 rounded-xl border transition-all flex items-start justify-between gap-3 ${
                   isSelected
-                    ? 'bg-accent-primary/10 border-accent-primary shadow-sm'
-                    : 'bg-app-surface/60 border-app-border hover:border-text-muted hover:bg-app-surface'
+                    ? 'bg-[#E5EDFF] border-[#4169E1] ring-2 ring-[#4169E1]/20 shadow-xs'
+                    : 'bg-white border-app-border hover:border-[#C9D9FF] hover:bg-[#F8FAFC]'
                 }`}
               >
-                <div className="flex items-start gap-2.5 min-w-0">
-                  <span className="mt-0.5 shrink-0">{getNodeIcon(node.type)}</span>
+                <div className="flex items-start gap-3 min-w-0">
+                  <span className={`p-2 rounded-lg shrink-0 mt-0.5 ${
+                    isSelected ? 'bg-white text-[#4169E1] shadow-2xs' : 'bg-[#F8FAFC] text-text-muted border border-app-border'
+                  }`}>
+                    {getNodeIcon(node.type)}
+                  </span>
                   <div className="min-w-0">
-                    <div className="text-xs font-semibold text-text-primary font-mono truncate">
+                    <div className="font-mono text-xs font-bold text-[#25324B] truncate">
                       {node.label}
                     </div>
-                    <div className="text-[11px] text-text-muted font-mono truncate">
+                    <div className="font-mono text-[11px] text-text-secondary truncate mt-0.5">
                       {node.filePath}
                       {node.line ? `:${node.line}` : ''}
                     </div>
@@ -113,7 +125,7 @@ export const ComponentSelector: React.FC<ComponentSelectorProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <Badge variant="outline" size="sm">{node.type}</Badge>
+                  <Badge variant={isSelected ? 'info' : 'outline'} size="sm">{node.type}</Badge>
                   {node.metadata?.isExported && (
                     <Badge variant="purple" size="sm">exported</Badge>
                   )}

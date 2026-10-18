@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { Sidebar } from '@/components/layout/Sidebar';
-import { Header } from '@/components/layout/Header';
+import { AppShell } from '@/components/layout/AppShell';
 
 export const metadata: Metadata = {
   title: 'CodeWhy — Engineering Decision Intelligence',
@@ -14,20 +13,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className="bg-app-bg text-text-primary antialiased min-h-screen flex flex-col font-sans">
-        <div className="flex flex-1 min-h-screen overflow-hidden">
-          {/* Persistent Sidebar */}
-          <Sidebar />
-
-          {/* Main Content Workspace */}
-          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-            <Header />
-            <main className="flex-1 overflow-y-auto p-6 bg-app-bg">
-              {children}
-            </main>
-          </div>
-        </div>
+    <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+      </head>
+      <body className="bg-app-bg text-text-primary antialiased min-h-screen flex flex-col selection:bg-blue-100 selection:text-blue-800" style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
+        <AppShell>
+          {children}
+        </AppShell>
       </body>
     </html>
   );

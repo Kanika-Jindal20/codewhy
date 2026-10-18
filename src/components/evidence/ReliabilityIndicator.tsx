@@ -4,9 +4,9 @@ import type { LucideIcon } from 'lucide-react';
 import type { ReliabilityAssessment, ReliabilityLabel } from '@/types/evidence';
 
 const LABELS: Record<ReliabilityLabel, { title: string; tone: string; Icon: LucideIcon }> = {
-  high_evidence: { title: 'High evidence', tone: 'border-status-success/30 bg-status-success/10 text-status-success', Icon: CheckCircle2 },
-  limited_evidence: { title: 'Limited evidence', tone: 'border-status-warning/30 bg-status-warning/10 text-status-warning', Icon: AlertTriangle },
-  conflicting_evidence: { title: 'Conflicting evidence', tone: 'border-status-warning/30 bg-status-warning/10 text-status-warning', Icon: AlertCircle },
+  high_evidence: { title: 'High evidence', tone: 'border-emerald-200 bg-emerald-50/70 text-emerald-900', Icon: CheckCircle2 },
+  limited_evidence: { title: 'Limited evidence', tone: 'border-amber-200 bg-amber-50/70 text-amber-900', Icon: AlertTriangle },
+  conflicting_evidence: { title: 'Conflicting evidence', tone: 'border-rose-200 bg-rose-50/70 text-rose-900', Icon: AlertCircle },
   insufficient_evidence: { title: 'Insufficient evidence', tone: 'border-app-border bg-app-surface text-text-secondary', Icon: HelpCircle },
 };
 

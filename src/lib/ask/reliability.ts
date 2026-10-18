@@ -45,7 +45,7 @@ export function assessAnswerReliability(
   return { label, heuristic: true, reasons, conflictGroups, unsupportedClaimCount };
 }
 
-export function inferDirectness(evidence: EvidenceSource): EvidenceSource['directness'] {
+export function inferDirectness(evidence: EvidenceSource): 'direct' | 'indirect' | 'interpretation' {
   if (evidence.type === 'co_change_history') return 'indirect';
   if (evidence.type === 'ast_relation' || evidence.type === 'file_span' || evidence.type === 'config_reference') return 'direct';
   if (evidence.type === 'pull_request' || evidence.type === 'doc') return 'direct';

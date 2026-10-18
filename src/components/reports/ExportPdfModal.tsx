@@ -167,23 +167,23 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-xs"
       role="dialog"
       aria-modal="true"
       aria-labelledby="export-pdf-modal-title"
     >
-      <div className="bg-app-panel border border-app-border rounded-xl shadow-2xl max-w-xl w-full flex flex-col max-h-[90vh] overflow-hidden text-text-primary">
+      <div className="bg-white border border-app-border rounded-2xl shadow-xl max-w-xl w-full flex flex-col max-h-[90vh] overflow-hidden text-text-primary">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-app-border flex items-center justify-between shrink-0 bg-app-surface/40">
+        <div className="px-6 py-4 border-b border-app-border flex items-center justify-between shrink-0 bg-app-panel">
           <div className="flex items-center gap-2.5">
-            <span className="p-2 rounded-lg bg-accent-primary/20 text-accent-primary border border-accent-primary/30">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-app-subtleBlue text-accent-primary border border-accent-primary/20">
               <FileText className="w-4 h-4" />
             </span>
             <div>
-              <h2 id="export-pdf-modal-title" className="text-sm font-bold tracking-tight">
+              <h2 id="export-pdf-modal-title" className="text-sm font-semibold text-text-primary tracking-tight">
                 Export Engineering Decision Report (PDF)
               </h2>
-              <span className="text-[11px] text-text-muted font-mono">
+              <span className="text-[11px] text-text-muted">
                 Publication-grade, traceable architectural documentation
               </span>
             </div>
@@ -198,10 +198,10 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
         </div>
 
         {/* Scrollable Body */}
-        <div className="p-5 space-y-4 overflow-y-auto flex-1 text-xs">
+        <div className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
           {/* Title customization */}
           <div>
-            <label htmlFor="report-custom-title" className="block text-xs font-semibold text-text-secondary mb-1">
+            <label htmlFor="report-custom-title" className="block text-xs font-semibold text-text-primary mb-1.5">
               Document Title
             </label>
             <input
@@ -209,7 +209,7 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
               type="text"
               value={customTitle}
               onChange={e => setCustomTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-app-surface border border-app-border rounded-lg text-xs font-mono text-text-primary focus:outline-none focus:ring-1 focus:ring-accent-primary"
+              className="w-full px-3 py-2 bg-white border border-app-border rounded-lg text-xs font-sans text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/20 transition-colors shadow-2xs"
               placeholder="Enter report title…"
             />
           </div>
@@ -217,27 +217,27 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
           {/* Section Selector */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-text-secondary">
+              <span className="text-xs font-semibold text-text-primary">
                 Select Report Sections
               </span>
-              <span className="text-[11px] text-text-muted font-mono">
+              <span className="text-[11px] text-text-muted">
                 Empty sections are omitted automatically
               </span>
             </div>
 
-            <div className="space-y-1.5 bg-app-surface/60 border border-app-border rounded-lg p-2.5 max-h-56 overflow-y-auto">
+            <div className="space-y-1 bg-app-surface/50 border border-app-border rounded-xl p-2.5 max-h-56 overflow-y-auto">
               {sectionOptions.map(opt => {
                 const isChecked = sections[opt.key] && opt.isAvailable;
                 return (
                   <div
                     key={opt.key}
                     onClick={() => opt.isAvailable && toggleSection(opt.key)}
-                    className={`flex items-center justify-between p-2 rounded text-xs transition-colors ${
+                    className={`flex items-center justify-between p-2 rounded-lg text-xs transition-colors ${
                       !opt.isAvailable
                         ? 'opacity-40 cursor-not-allowed text-text-muted'
                         : isChecked
-                        ? 'bg-accent-primary/10 text-text-primary cursor-pointer'
-                        : 'hover:bg-app-surface text-text-secondary cursor-pointer'
+                        ? 'bg-app-subtleBlue text-text-primary cursor-pointer'
+                        : 'hover:bg-white text-text-secondary cursor-pointer'
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
@@ -263,19 +263,19 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
           </div>
 
           {/* Quality Standards Guarantee Banner */}
-          <div className="p-3 bg-app-bg border border-app-border rounded-lg text-[11px] text-text-muted space-y-1">
-            <div className="flex items-center gap-1.5 text-status-success font-medium">
+          <div className="p-3.5 bg-app-surface border border-app-border rounded-xl text-[11px] text-text-muted space-y-1">
+            <div className="flex items-center gap-1.5 text-status-success font-semibold text-xs">
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>Grounded Evidence & Non-Causality Guarantee</span>
             </div>
-            <p className="leading-relaxed">
+            <p className="leading-relaxed text-text-secondary">
               Exported document features running headers, page numbering, clickable remote source links, and clear differentiation between verified AST links and statistical co-change suggestions.
             </p>
           </div>
 
           {/* Error Message */}
           {errorMessage && (
-            <div className="p-3 rounded-lg bg-status-error/10 border border-status-error/30 text-status-error flex items-start gap-2">
+            <div className="p-3.5 rounded-xl bg-status-error/10 border border-status-error/30 text-status-error flex items-start gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <div className="space-y-0.5">
                 <div className="font-semibold">Export Failed</div>
@@ -286,7 +286,7 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
 
           {/* Success Message (only shown AFTER file is downloaded) */}
           {downloadSuccessTime && (
-            <div className="p-3 rounded-lg bg-status-success/10 border border-status-success/30 text-status-success flex items-start gap-2">
+            <div className="p-3.5 rounded-xl bg-status-success/10 border border-status-success/30 text-status-success flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
               <div>
                 <div className="font-semibold">PDF Downloaded Successfully</div>
@@ -299,7 +299,7 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="px-5 py-3 border-t border-app-border flex items-center justify-between bg-app-surface/40 shrink-0">
+        <div className="px-6 py-3.5 border-t border-app-border flex items-center justify-between bg-app-panel shrink-0">
           <Button variant="outline" size="sm" onClick={onClose} disabled={isGenerating}>
             Cancel
           </Button>

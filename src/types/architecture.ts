@@ -77,14 +77,14 @@ export type TableSortKey = 'label' | 'type' | 'filePath' | 'edgeCount';
 
 /** Node type color palette, aligned with CodeWhy's global theme. */
 export const NODE_TYPE_COLORS: Record<NodeType, string> = {
-  file:     '#6485F5', // accent-primary
-  module:   '#9B8AFB', // accent-secondary
-  function: '#35B88A', // status-success
-  class:    '#64B5F6', // status-info
-  test:     '#E7B65C', // status-warning
-  config:   '#78869B', // text-muted
-  decision: '#F07878', // status-error
-  commit:   '#A7B2C4', // text-secondary
+  file:     '#4169E1', // primary-blue
+  module:   '#5546B8', // deep-indigo
+  function: '#16A34A', // status-success
+  class:    '#0284C7', // soft-sky-blue
+  test:     '#D97706', // status-warning
+  config:   '#64748B', // text-muted
+  decision: '#DC2626', // status-error
+  commit:   '#475569', // text-secondary
 };
 
 /** Human-readable labels for node types. */

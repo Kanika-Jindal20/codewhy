@@ -172,69 +172,97 @@ export const ArchitectureExplorerClient: React.FC<ArchitectureExplorerClientProp
   // Render
   // ---------------------------------------------------------------------------
   return (
-    <div className="flex flex-col gap-4 h-full min-h-[calc(100vh-8rem)]">
-      {/* Page header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-0.5">
-            <Compass className="w-5 h-5 text-accent-primary" />
-            <h1 className="text-lg font-bold text-text-primary">Architecture Explorer</h1>
-            <Badge variant="purple" size="sm">Feature 11</Badge>
+    <div className="flex flex-col gap-5 h-full min-h-[calc(100vh-8rem)]">
+      {/* ── Page Header Banner ── */}
+      <header className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 p-6 sm:p-7 text-white shadow-xl">
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_top_right,_white_0%,_transparent_70%)] pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+          <div className="flex items-center gap-4">
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 shadow-lg">
+              <Compass className="w-7 h-7 text-white stroke-[2.5]" />
+            </span>
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+                  Architecture Explorer
+                </h1>
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/20 backdrop-blur-sm border border-white/30 text-white">
+                  AST Knowledge Graph
+                </span>
+              </div>
+              <p className="text-sm text-blue-100 mt-1 max-w-2xl">
+                Explore structural dependencies and call hierarchies in{' '}
+                <span className="font-bold text-white underline decoration-cyan-300 underline-offset-2">{repoName}</span>
+                . Grounded in abstract syntax tree analysis.
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-text-muted">
-            Interactive graph of <span className="text-text-secondary font-mono">{repoName}</span>
-            {' '}— {totalNodes} nodes, {totalEdges} edges in repository
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowLegend(v => !v)}
-            className="px-2.5 py-1.5 text-xs font-mono bg-app-surface border border-app-border rounded-lg text-text-secondary hover:text-text-primary transition-colors"
-          >
-            {showLegend ? 'Hide Legend' : 'Show Legend'}
-          </button>
-          {/* View toggle */}
-          <div className="flex items-center bg-app-surface border border-app-border rounded-lg overflow-hidden">
-            <button
-              onClick={() => setViewMode('graph')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
-                viewMode === 'graph'
-                  ? 'bg-accent-primary/15 text-accent-primary'
-                  : 'text-text-muted hover:text-text-secondary'
-              }`}
-              aria-pressed={viewMode === 'graph'}
-            >
-              <Network className="w-3.5 h-3.5" /> Graph
-            </button>
-            <div className="w-px h-4 bg-app-border" aria-hidden />
-            <button
-              onClick={() => setViewMode('table')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
-                viewMode === 'table'
-                  ? 'bg-accent-primary/15 text-accent-primary'
-                  : 'text-text-muted hover:text-text-secondary'
-              }`}
-              aria-pressed={viewMode === 'table'}
-            >
-              <Table className="w-3.5 h-3.5" /> Table
-            </button>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Stat Badges */}
+            <div className="flex items-center gap-2">
+              <div className="px-3 py-1.5 rounded-xl bg-white/15 backdrop-blur-sm border border-white/25 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span className="text-xs font-extrabold text-white">{totalNodes}</span>
+                <span className="text-[11px] text-blue-100 font-medium">Nodes</span>
+              </div>
+              <div className="px-3 py-1.5 rounded-xl bg-white/15 backdrop-blur-sm border border-white/25 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                <span className="text-xs font-extrabold text-white">{totalEdges}</span>
+                <span className="text-[11px] text-blue-100 font-medium">Edges</span>
+              </div>
+            </div>
+
+            {/* Legend & View toggle */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowLegend(v => !v)}
+                className="px-3.5 py-2 text-xs bg-white text-blue-700 rounded-xl font-bold hover:bg-blue-50 transition-all shadow-md"
+              >
+                {showLegend ? 'Hide Legend' : 'Show Legend'}
+              </button>
+              <div className="flex items-center bg-black/20 backdrop-blur-md rounded-xl p-1 border border-white/20">
+                <button
+                  onClick={() => setViewMode('graph')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg font-bold transition-all ${
+                    viewMode === 'graph'
+                      ? 'bg-white text-blue-700 shadow-md'
+                      : 'text-white/80 hover:text-white'
+                  }`}
+                  aria-pressed={viewMode === 'graph'}
+                >
+                  <Network className="w-3.5 h-3.5" /> Graph
+                </button>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg font-bold transition-all ${
+                    viewMode === 'table'
+                      ? 'bg-white text-blue-700 shadow-md'
+                      : 'text-white/80 hover:text-white'
+                  }`}
+                  aria-pressed={viewMode === 'table'}
+                >
+                  <Table className="w-3.5 h-3.5" /> Table
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Legend (collapsible) */}
       {showLegend && <GraphLegend />}
 
       {/* Search + Filters row */}
-      <div className="flex flex-col gap-3 bg-app-panel border border-app-border rounded-lg p-3">
+      <div className="flex flex-col gap-3 bg-white border border-blue-100 rounded-2xl p-4 sm:p-5 shadow-lg">
         <GraphSearchBar repoId={repoId} onSelectNode={handleSearchSelect} />
         <GraphFilters filters={filters} onChange={setFilters} />
       </div>
 
       {/* Main content: canvas + detail panel */}
-      <div className="flex flex-1 gap-4 min-h-0">
-        {/* Canvas / Table — takes up remaining space */}
-        <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex flex-1 gap-5 min-h-0">
+        {/* Canvas / Table */}
+        <div className="flex-1 flex flex-col min-w-0 bg-white border border-blue-100 rounded-2xl overflow-hidden shadow-lg">
           {viewMode === 'graph' ? (
             <GraphCanvas
               nodes={visNodes}
@@ -258,16 +286,20 @@ export const ArchitectureExplorerClient: React.FC<ArchitectureExplorerClientProp
           )}
         </div>
 
-        {/* Detail panel — fixed width sidebar */}
-        <div className="w-80 xl:w-96 shrink-0 bg-app-panel border border-app-border rounded-lg flex flex-col min-h-0 overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-app-border flex items-center justify-between">
-            <span className="text-xs font-semibold text-text-muted uppercase tracking-wider font-mono">
-              Entity Detail
-            </span>
+        {/* Detail panel — Entity Inspector */}
+        <div className="w-80 xl:w-96 shrink-0 bg-white border border-blue-100 rounded-2xl flex flex-col min-h-0 overflow-hidden shadow-lg border-t-4 border-t-blue-600">
+          <div className="px-4 py-3.5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+              <span className="text-xs font-extrabold uppercase tracking-wider text-blue-900">
+                Entity Inspector
+              </span>
+            </div>
             {selectedNode && (
               <span
-                className="w-2.5 h-2.5 rounded-full"
+                className="w-3 h-3 rounded-full shadow-xs"
                 style={{ backgroundColor: NODE_TYPE_COLORS[selectedNode.type] }}
+                title={`Type: ${selectedNode.type}`}
                 aria-hidden
               />
             )}
@@ -286,7 +318,7 @@ export const ArchitectureExplorerClient: React.FC<ArchitectureExplorerClientProp
       </div>
 
       {/* Breadcrumb trail */}
-      <div className="bg-app-panel border border-app-border rounded-lg px-4 py-2 flex items-center">
+      <div className="bg-white border border-blue-100 rounded-2xl px-5 py-3 flex items-center shadow-md">
         <NavigationBreadcrumb
           trail={navigationTrail}
           onNavigate={handleBreadcrumbNavigate}

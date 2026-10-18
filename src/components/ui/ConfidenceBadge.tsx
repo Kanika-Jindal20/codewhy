@@ -15,24 +15,24 @@ export const ConfidenceBadge: React.FC<ConfidenceBadgeProps> = ({
 }) => {
   const config = {
     high: {
-      icon: <CheckCircle2 className="w-3.5 h-3.5 text-status-success" />,
+      icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />,
       label: 'High evidence',
-      badgeClass: 'bg-status-success/10 text-status-success border-status-success/30',
+      badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     },
     medium: {
-      icon: <AlertTriangle className="w-3.5 h-3.5 text-status-warning" />,
+      icon: <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />,
       label: 'Partial evidence',
-      badgeClass: 'bg-status-warning/10 text-status-warning border-status-warning/30',
+      badgeClass: 'bg-amber-50 text-amber-800 border-amber-200',
     },
     low: {
-      icon: <AlertCircle className="w-3.5 h-3.5 text-status-error" />,
+      icon: <AlertCircle className="w-3.5 h-3.5 text-rose-600" />,
       label: 'Limited evidence',
-      badgeClass: 'bg-status-error/10 text-status-error border-status-error/30',
+      badgeClass: 'bg-rose-50 text-rose-700 border-rose-200',
     },
     insufficient_evidence: {
-      icon: <HelpCircle className="w-3.5 h-3.5 text-text-muted" />,
+      icon: <HelpCircle className="w-3.5 h-3.5 text-slate-500" />,
       label: 'Insufficient Evidence',
-      badgeClass: 'bg-app-surface text-text-muted border-app-border',
+      badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
     },
   }[level];
 
