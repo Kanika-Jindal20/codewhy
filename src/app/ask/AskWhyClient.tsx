@@ -85,15 +85,21 @@ export function AskWhyClient() {
             </div>
           </div>
 
-          {/* Repo badge */}
-          <div className="flex items-center gap-2.5 rounded-2xl border border-white/30 bg-white/15 backdrop-blur-sm px-4 py-2.5 shadow-sm self-start sm:self-auto">
-            <FolderGit2 className="w-4 h-4 text-purple-100" aria-hidden />
-            <span className="font-bold text-white text-sm">{repo.repoName}</span>
-            {repo.isDemo && (
-              <span className="rounded-full bg-amber-400/90 px-2.5 py-0.5 text-xs font-bold text-amber-900 border border-amber-300/50">
-                Demo
-              </span>
-            )}
+          {/* Repo & AI Model badges */}
+          <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
+            <div className="flex items-center gap-2 rounded-2xl border border-white/30 bg-white/15 backdrop-blur-sm px-4 py-2.5 shadow-sm">
+              <FolderGit2 className="w-4 h-4 text-purple-100" aria-hidden />
+              <span className="font-bold text-white text-sm">{repo.repoName}</span>
+              {repo.isDemo && (
+                <span className="rounded-full bg-amber-400/90 px-2.5 py-0.5 text-xs font-bold text-amber-900 border border-amber-300/50">
+                  Demo
+                </span>
+              )}
+            </div>
+            <span className="inline-flex items-center gap-1.5 rounded-2xl border border-white/30 bg-white/20 backdrop-blur-sm px-3.5 py-2.5 text-xs font-bold text-white shadow-sm">
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              Sarvam AI (105B) + Neo4j
+            </span>
           </div>
         </div>
       </header>
@@ -227,8 +233,19 @@ export function AskWhyClient() {
                       <Sparkles className="w-3 h-3" />
                       {response.answerMode === 'ai' ? 'Evidence-grounded synthesis' : 'Evidence-only'}
                     </span>
+                    {response.sarvamDetails && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        {response.sarvamDetails.model}
+                      </span>
+                    )}
+                    {response.neo4jGrounded && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold bg-blue-100 text-blue-800 border border-blue-300 shadow-xs">
+                        Neo4j Grounded
+                      </span>
+                    )}
                     {response.modelNote && (
-                      <span className="text-xs font-medium text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full border border-gray-200">{response.modelNote}</span>
+                      <span className="text-xs font-medium text-gray-500 bg-gray-50 px-2.5 py-1 rounded-full border border-gray-200">{response.modelNote}</span>
                     )}
                   </div>
 
@@ -239,6 +256,12 @@ export function AskWhyClient() {
                         <p key={part} className="whitespace-pre-wrap">{paragraph}</p>
                       ))}
                     </div>
+
+                    {response.sarvamDetails?.limitations && (
+                      <div className="mt-4 pt-3 border-t border-violet-200 text-xs text-amber-900 bg-amber-50/70 p-3 rounded-xl border border-amber-200 font-medium">
+                        <span className="font-extrabold text-amber-950">Verification Scope:</span> {response.sarvamDetails.limitations}
+                      </div>
+                    )}
                   </div>
 
                   {/* Claims / Cited Evidence */}

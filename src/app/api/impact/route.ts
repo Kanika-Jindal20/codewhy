@@ -36,6 +36,26 @@ export async function POST(req: NextRequest) {
     // Lookup repository graph (falls back to default sample if not found or empty)
     const graph = getRepositoryGraph(repoId) || SAMPLE_REPO_ECOMMERCE;
 
+    const request: ImpactAnalysisRequest = {
+      repoId: graph.repoId,
+      targetNodeId,
+      changeCategory: changeCategory || 'breaking_interface',
+      proposedChangeDescription: proposedChangeDescription || 'Refactoring component contract and behavior',
+      maxTransitiveDepth: maxTransitiveDepth ? Math.min(Number(maxTransitiveDepth), 6) : 4,
+    };
+
+    // 1. Try Neo4j-backed impact analysis first if configured
+    try {
+      const { analyzeChangeImpactInNeo4j } = await import('@/lib/neo4j/neo4j-impact-service');
+      const neo4jResult = await analyzeChangeImpactInNeo4j(request);
+      if (neo4jResult) {
+        return NextResponse.json(neo4jResult, { status: 200 });
+      }
+    } catch (neo4jErr) {
+      console.warn('[/api/impact] Neo4j traversal fallback:', neo4jErr);
+    }
+
+    // 2. Fallback to in-memory graph traversal
     const targetExists = graph.nodes.some(n => n.id === targetNodeId);
     if (!targetExists) {
       return NextResponse.json(
@@ -46,14 +66,6 @@ export async function POST(req: NextRequest) {
         { status: 404 }
       );
     }
-
-    const request: ImpactAnalysisRequest = {
-      repoId: graph.repoId,
-      targetNodeId,
-      changeCategory: changeCategory || 'breaking_interface',
-      proposedChangeDescription: proposedChangeDescription || 'Refactoring component contract and behavior',
-      maxTransitiveDepth: maxTransitiveDepth ? Math.min(Number(maxTransitiveDepth), 6) : 4,
-    };
 
     const analysis = analyzeChangeImpact(graph, request);
 

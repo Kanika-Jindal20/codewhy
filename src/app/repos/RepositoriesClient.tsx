@@ -52,6 +52,45 @@ export function RepositoriesClient() {
   const [lookupResult, setLookupResult] = useState<any | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
 
+  // Neo4j Indexing State
+  const [isIndexingNeo4j, setIsIndexingNeo4j] = useState(false);
+  const [neo4jIndexStatus, setNeo4jIndexStatus] = useState<{
+    success?: boolean;
+    message?: string;
+    error?: string;
+  } | null>(null);
+
+  const handleIndexIntoNeo4j = async (targetRepoId: string) => {
+    setIsIndexingNeo4j(true);
+    setNeo4jIndexStatus(null);
+    try {
+      const res = await fetch('/api/repositories/index', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repoId: targetRepoId, useSample: true }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setNeo4jIndexStatus({
+          success: true,
+          message: `Indexed into Neo4j: ${data.nodesIndexed} code nodes, ${data.edgesIndexed} relationships.`,
+        });
+      } else {
+        setNeo4jIndexStatus({
+          success: false,
+          error: data.error || 'Neo4j connection inactive. Set NEO4J_URI in .env.',
+        });
+      }
+    } catch (err: unknown) {
+      setNeo4jIndexStatus({
+        success: false,
+        error: err instanceof Error ? err.message : 'Network error indexing into Neo4j.',
+      });
+    } finally {
+      setIsIndexingNeo4j(false);
+    }
+  };
+
   const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!lookupUrl.trim() || isLookingUp) return;
@@ -199,14 +238,37 @@ export function RepositoriesClient() {
                       </div>
                     </div>
                   </div>
+
+                  {neo4jIndexStatus && (
+                    <div className={`p-3.5 rounded-2xl text-xs font-bold border transition-all ${
+                      neo4jIndexStatus.success
+                        ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                        : 'bg-amber-50 border-amber-300 text-amber-900'
+                    }`}>
+                      {neo4jIndexStatus.success ? '✓ ' : '⚠️ '}
+                      {neo4jIndexStatus.message || neo4jIndexStatus.error}
+                    </div>
+                  )}
                 </div>
 
-                <div className="flex flex-wrap lg:flex-col items-stretch gap-2.5 shrink-0 pt-2 lg:pt-0 min-w-[180px]">
-                  <Link href="/">
-                    <Button variant="secondary" size="sm" className="w-full justify-center">
-                      Dashboard Overview
-                    </Button>
-                  </Link>
+                <div className="flex flex-wrap lg:flex-col items-stretch gap-2.5 shrink-0 pt-2 lg:pt-0 min-w-[190px]">
+                  <button
+                    onClick={() => handleIndexIntoNeo4j(repo.repoId)}
+                    disabled={isIndexingNeo4j}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50"
+                  >
+                    {isIndexingNeo4j ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Indexing into Neo4j…</span>
+                      </>
+                    ) : (
+                      <>
+                        <Network className="w-3.5 h-3.5" />
+                        <span>Index into Neo4j</span>
+                      </>
+                    )}
+                  </button>
                   <Link href="/architecture">
                     <Button
                       variant="secondary"

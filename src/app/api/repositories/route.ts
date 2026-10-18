@@ -65,3 +65,30 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export async function GET() {
+  const { getAllRepositories } = await import('@/lib/graph/graph-store');
+  const { isNeo4jConfigured } = await import('@/lib/neo4j/config');
+  const { verifyNeo4jConnection } = await import('@/lib/neo4j/driver');
+
+  let neo4jHealth: { connected: boolean; serverInfo?: string; error?: string } = {
+    connected: false,
+    error: 'Neo4j is not configured.',
+  };
+
+  if (isNeo4jConfigured()) {
+    neo4jHealth = await verifyNeo4jConnection();
+  }
+
+  const repos = getAllRepositories();
+
+  return NextResponse.json({
+    repositories: repos,
+    neo4j: {
+      isConfigured: isNeo4jConfigured(),
+      connected: neo4jHealth.connected,
+      serverInfo: neo4jHealth.serverInfo,
+      error: neo4jHealth.error,
+    },
+  }, { status: 200 });
+}

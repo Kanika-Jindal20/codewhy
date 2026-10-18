@@ -28,6 +28,13 @@ export interface AskWhyResponse {
   reliability: import('./evidence').ReliabilityAssessment;
   followUpQuestions: string[];
   isDemoData: boolean;
+  sarvamDetails?: {
+    model: string;
+    reasoningSummary?: string;
+    limitations?: string;
+    suggestedNextSteps?: string[];
+  };
+  neo4jGrounded?: boolean;
 }
 
 export interface AskWhyRequest {
