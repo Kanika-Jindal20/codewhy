@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   AlertTriangle, 
@@ -22,7 +22,7 @@ export function KnowledgeGapsClient() {
   const gapsData = SAMPLE_REPORT_JWT_REFACTOR.knowledgeGaps;
   const [filterSeverity, setFilterSeverity] = useState<'all' | 'high' | 'medium'>('all');
 
-  const gaps = [
+  const [gaps, setGaps] = useState<any[]>([
     {
       id: 'gap-jwt-adr',
       title: 'Missing ADR: JWKS Key Rotation Fallback',
@@ -45,7 +45,18 @@ export function KnowledgeGapsClient() {
       developerImpact: 'Changes to auth headers can silently drop claims without triggering test failures during CI.',
       suggestedRemediation: 'Add an integration contract test suite in tests/gateway-auth.test.ts asserting header preservation across routes.',
     },
-  ];
+  ]);
+
+  useEffect(() => {
+    fetch('/api/gaps')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data.gaps) && data.gaps.length > 0) {
+          setGaps(data.gaps);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const filteredGaps = filterSeverity === 'all' 
     ? gaps 

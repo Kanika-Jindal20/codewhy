@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FileText,
   Download,
@@ -27,11 +27,29 @@ import { Badge } from '@/components/ui/Badge';
 import Link from 'next/link';
 
 export const ReportsClient: React.FC = () => {
-  const [reports] = useState<EngineeringDecisionReport[]>([
+  const [reports, setReports] = useState<EngineeringDecisionReport[]>([
     SAMPLE_REPORT_JWT_REFACTOR,
     SAMPLE_REPORT_MINIMAL,
   ]);
   const [selectedReport, setSelectedReport] = useState<EngineeringDecisionReport>(SAMPLE_REPORT_JWT_REFACTOR);
+
+  useEffect(() => {
+    async function loadReports() {
+      try {
+        const res = await fetch('/api/reports');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.reports) && data.reports.length > 0) {
+            setReports(data.reports);
+            setSelectedReport(data.reports[0]);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load dynamic reports:', err);
+      }
+    }
+    loadReports();
+  }, []);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   const handleOpenExport = (report: EngineeringDecisionReport) => {
@@ -57,7 +75,7 @@ export const ReportsClient: React.FC = () => {
       case 'critical':
         return 'bg-red-100 text-red-700 border border-red-200';
       case 'high':
-        return 'bg-orange-100 text-orange-700 border border-orange-200';
+        return 'bg-rose-100 text-rose-700 border border-rose-200';
       case 'medium':
         return 'bg-amber-100 text-amber-700 border border-amber-200';
       default:
@@ -68,12 +86,12 @@ export const ReportsClient: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-12 font-['Inter',sans-serif]">
 
-      {/* ── Top Header Banner ── */}
-      <div className="bg-gradient-to-br from-orange-500 via-orange-600 to-amber-500 rounded-3xl p-7 sm:p-8 shadow-lg overflow-hidden relative">
+      {/* ── Top Header Banner (Blue Theme) ── */}
+      <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-700 rounded-3xl p-7 sm:p-8 shadow-lg overflow-hidden relative">
         {/* Background decoration */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-10 -right-10 w-60 h-60 rounded-full bg-white/5" />
-          <div className="absolute -bottom-16 -left-8 w-48 h-48 rounded-full bg-white/5" />
+          <div className="absolute -top-10 -right-10 w-60 h-60 rounded-full bg-white/10" />
+          <div className="absolute -bottom-16 -left-8 w-48 h-48 rounded-full bg-white/10" />
         </div>
 
         <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-5">
@@ -85,7 +103,7 @@ export const ReportsClient: React.FC = () => {
               <h1 className="text-3xl font-extrabold text-white tracking-tight drop-shadow-sm">
                 Engineering Decision Reports
               </h1>
-              <p className="text-sm text-orange-100 leading-relaxed max-w-2xl mt-1.5 font-medium">
+              <p className="text-sm text-blue-100 leading-relaxed max-w-2xl mt-1.5 font-medium">
                 Turn code investigations, pre-change blast radius evaluations, and architecture reviews into
                 publication-grade, traceable PDF reports with clickable source evidence.
               </p>
@@ -95,27 +113,11 @@ export const ReportsClient: React.FC = () => {
           <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={() => handleOpenExport(selectedReport)}
-              className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-white text-orange-600 font-bold text-sm shadow-lg hover:shadow-xl hover:bg-orange-50 transition-all border border-orange-100"
+              className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-white text-blue-600 font-bold text-sm shadow-lg hover:shadow-xl hover:bg-blue-50 transition-all border border-blue-100"
             >
               <Download className="w-4 h-4 stroke-[2.5]" />
               Export PDF
             </button>
-          </div>
-        </div>
-
-        {/* Feature Highlight Chips */}
-        <div className="relative flex flex-wrap gap-3 mt-6 pt-5 border-t border-white/20">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500 shadow-md border border-emerald-400">
-            <CheckCircle2 className="w-4 h-4 text-white shrink-0" />
-            <span className="text-sm font-bold text-white">AST Grounded</span>
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500 shadow-md border border-blue-400">
-            <ShieldCheck className="w-4 h-4 text-white shrink-0" />
-            <span className="text-sm font-bold text-white">Evidence-backed</span>
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500 shadow-md border border-violet-400">
-            <FileText className="w-4 h-4 text-white shrink-0" />
-            <span className="text-sm font-bold text-white">PDF Format</span>
           </div>
         </div>
       </div>
@@ -130,7 +132,7 @@ export const ReportsClient: React.FC = () => {
             <h2 className="text-sm font-extrabold uppercase tracking-widest text-slate-500">
               Available Audits
             </h2>
-            <span className="text-sm font-bold px-3 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
+            <span className="text-sm font-bold px-3 py-1 rounded-full bg-blue-100 text-blue-700 border border-blue-200">
               {reports.length} reports
             </span>
           </div>
@@ -148,8 +150,8 @@ export const ReportsClient: React.FC = () => {
                   onClick={() => setSelectedReport(rep)}
                   className={`p-4 rounded-2xl border-2 cursor-pointer transition-all shadow-sm hover:shadow-lg ${
                     isSelected
-                      ? 'bg-orange-50 border-orange-500 ring-4 ring-orange-500/10'
-                      : 'bg-white border-slate-200 hover:border-orange-300 hover:bg-orange-50/30'
+                      ? 'bg-blue-50/70 border-blue-600 ring-4 ring-blue-500/10'
+                      : 'bg-white border-slate-200 hover:border-blue-300 hover:bg-blue-50/30'
                   }`}
                 >
                   {/* Repo badge + Risk badge */}
@@ -197,7 +199,7 @@ export const ReportsClient: React.FC = () => {
                         e.stopPropagation();
                         handleOpenExport(rep);
                       }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-bold hover:bg-orange-600 transition-colors shadow-sm"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors shadow-sm"
                     >
                       <Download className="w-3.5 h-3.5" />
                       Export PDF
@@ -209,9 +211,9 @@ export const ReportsClient: React.FC = () => {
           </div>
 
           {/* Quick link to trigger fresh analyses */}
-          <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-2xl p-5 space-y-3 shadow-sm">
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-5 space-y-3 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-orange-500 text-white flex items-center justify-center shadow-md shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shrink-0">
                 <Zap className="w-5 h-5 stroke-[2]" />
               </div>
               <span className="font-extrabold text-slate-800 text-sm">Generate Fresh Audit</span>
@@ -221,7 +223,7 @@ export const ReportsClient: React.FC = () => {
             </p>
             <Link
               href="/impact"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 text-white text-sm font-bold hover:bg-orange-600 transition-colors shadow-sm"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm"
             >
               Launch Impact Workspace <ArrowRight className="w-4 h-4" />
             </Link>
@@ -230,17 +232,17 @@ export const ReportsClient: React.FC = () => {
 
         {/* ── Right Column: Selected Report Live Preview (8 cols) ── */}
         <div className="lg:col-span-8 space-y-4">
-          <div className="bg-white border-2 border-slate-200 rounded-3xl overflow-hidden shadow-lg border-t-4 border-t-orange-500">
+          <div className="bg-white border-2 border-slate-200 rounded-3xl overflow-hidden shadow-lg border-t-4 border-t-blue-600">
 
             {/* Report Header Preview */}
             <div className="px-7 pt-7 pb-5 border-b border-slate-100">
               <div className="flex items-center justify-between gap-3 mb-4">
-                <span className="text-xs font-extrabold uppercase tracking-widest text-orange-600 bg-orange-100 px-3 py-1.5 rounded-full border border-orange-200">
+                <span className="text-xs font-extrabold uppercase tracking-widest text-blue-700 bg-blue-100 px-3 py-1.5 rounded-full border border-blue-200">
                   📄 Document Preview
                 </span>
                 <button
                   onClick={() => handleOpenExport(selectedReport)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 text-white text-sm font-bold hover:bg-orange-600 transition-colors shadow-sm"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm"
                 >
                   <Download className="w-4 h-4 stroke-[2]" />
                   Export to PDF
@@ -253,12 +255,12 @@ export const ReportsClient: React.FC = () => {
 
               {/* Repository stat chips */}
               <div className="flex flex-wrap gap-2">
-                <span className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl bg-orange-100 text-orange-700 border border-orange-200 font-semibold">
+                <span className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl bg-blue-100 text-blue-700 border border-blue-200 font-semibold">
                   <FolderGit2 className="w-3.5 h-3.5" />
                   {selectedReport.repository.repoName}
                 </span>
                 {selectedReport.repository.analyzedBranch && (
-                  <span className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl bg-blue-100 text-blue-700 border border-blue-200 font-semibold">
+                  <span className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200 font-semibold">
                     <GitBranch className="w-3.5 h-3.5" />
                     {selectedReport.repository.analyzedBranch}
                   </span>
@@ -282,7 +284,7 @@ export const ReportsClient: React.FC = () => {
               {selectedReport.executiveSummary && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-orange-500 text-white flex items-center justify-center shadow-md shrink-0">
+                    <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shrink-0">
                       <Star className="w-4 h-4 stroke-[2]" />
                     </div>
                     <h3 className="text-base font-extrabold text-slate-800 uppercase tracking-wide">
@@ -290,7 +292,7 @@ export const ReportsClient: React.FC = () => {
                     </h3>
                   </div>
 
-                  <div className="p-5 bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 border-l-4 border-l-orange-500 rounded-2xl space-y-3 shadow-sm">
+                  <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50/50 border-2 border-blue-200 border-l-4 border-l-blue-600 rounded-2xl space-y-3 shadow-sm">
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                       <span className="text-sm font-extrabold text-slate-800">
                         {selectedReport.executiveSummary.headline}
@@ -312,7 +314,7 @@ export const ReportsClient: React.FC = () => {
                       <ul className="space-y-2">
                         {selectedReport.executiveSummary.criticalTakeaways.map((t, idx) => (
                           <li key={idx} className="flex items-start gap-3">
-                            <span className="w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-extrabold flex items-center justify-center shrink-0 mt-0.5">
+                            <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-extrabold flex items-center justify-center shrink-0 mt-0.5">
                               {idx + 1}
                             </span>
                             <span className="text-sm text-slate-700 leading-relaxed">{t}</span>
@@ -328,14 +330,14 @@ export const ReportsClient: React.FC = () => {
               {selectedReport.proposedChange && (
                 <div className="space-y-3 pt-2 border-t border-slate-100">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-md shrink-0">
+                    <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shrink-0">
                       <Network className="w-4 h-4 stroke-[2]" />
                     </div>
                     <h3 className="text-base font-extrabold text-slate-800 uppercase tracking-wide">
                       2. Engineering Problem Statement &amp; Scope
                     </h3>
                   </div>
-                  <div className="p-5 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100/50 border-2 border-blue-200 border-l-4 border-l-blue-500 space-y-3 shadow-sm">
+                  <div className="p-5 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100/50 border-2 border-blue-200 border-l-4 border-l-blue-600 space-y-3 shadow-sm">
                     <div className="flex items-center flex-wrap gap-2">
                       <span className="text-sm text-slate-500 font-semibold">Target:</span>
                       <span className="font-mono font-bold text-sm text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
@@ -357,7 +359,7 @@ export const ReportsClient: React.FC = () => {
                 <div className="space-y-3 pt-2 border-t border-slate-100">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-red-500 text-white flex items-center justify-center shadow-md shrink-0">
+                      <div className="w-8 h-8 rounded-xl bg-red-600 text-white flex items-center justify-center shadow-md shrink-0">
                         <AlertTriangle className="w-4 h-4 stroke-[2]" />
                       </div>
                       <h3 className="text-base font-extrabold text-slate-800 uppercase tracking-wide">
@@ -372,7 +374,7 @@ export const ReportsClient: React.FC = () => {
                     {selectedReport.findings.map((f) => (
                       <div
                         key={f.id}
-                        className="p-4 rounded-2xl bg-gradient-to-br from-red-50 to-orange-50/50 border-2 border-red-100 border-l-4 border-l-red-400 space-y-2 shadow-sm"
+                        className="p-4 rounded-2xl bg-gradient-to-br from-red-50 to-slate-50 border-2 border-red-100 border-l-4 border-l-red-500 space-y-2 shadow-sm"
                       >
                         <div className="flex items-center justify-between gap-3 flex-wrap">
                           <span className="font-bold text-sm text-slate-800 font-mono">{f.title}</span>
@@ -394,7 +396,7 @@ export const ReportsClient: React.FC = () => {
                 <div className="space-y-3 pt-2 border-t border-slate-100">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-md shrink-0">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shrink-0">
                         <ShieldCheck className="w-4 h-4 stroke-[2]" />
                       </div>
                       <h3 className="text-base font-extrabold text-slate-800 uppercase tracking-wide">
@@ -426,7 +428,7 @@ export const ReportsClient: React.FC = () => {
                               href={ev.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="p-1.5 rounded-lg bg-orange-100 text-orange-600 hover:bg-orange-200 transition-colors"
+                              className="p-1.5 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
                             >
                               <ExternalLink className="w-3.5 h-3.5" />
                             </a>

@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     return errorResponse(
       'INTERNAL_ERROR',
       'An unexpected error occurred during repository lookup.',
-      500
+      64
     );
   }
 }
@@ -91,4 +91,48 @@ export async function GET() {
       error: neo4jHealth.error,
     },
   }, { status: 200 });
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const repoId = body?.repoId;
+    if (!repoId || typeof repoId !== 'string') {
+      return NextResponse.json({ error: 'repoId is required.' }, { status: 400 });
+    }
+    const { setActiveRepositoryId, getRepositoryGraph } = await import('@/lib/graph/graph-store');
+    const graph = getRepositoryGraph(repoId);
+    if (!graph) {
+      return NextResponse.json({ error: `Repository '${repoId}' not found.` }, { status: 404 });
+    }
+    setActiveRepositoryId(repoId);
+    return NextResponse.json({ success: true, activeRepoId: repoId }, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Failed to switch active repository.' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    let repoId = searchParams.get('repoId');
+    if (!repoId) {
+      const body = await req.json().catch(() => ({}));
+      repoId = body?.repoId;
+    }
+    if (!repoId || typeof repoId !== 'string') {
+      return NextResponse.json({ error: 'repoId is required to delete a repository.' }, { status: 400 });
+    }
+
+    const { deleteRepository } = await import('@/lib/graph/graph-store');
+    const result = deleteRepository(repoId);
+
+    if (!result.success) {
+      return NextResponse.json({ error: result.error || 'Failed to delete repository.' }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: true, deletedRepoId: repoId }, { status: 200 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || 'Internal server error deleting repository.' }, { status: 500 });
+  }
 }

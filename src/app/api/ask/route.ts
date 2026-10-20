@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRepositoryGraph } from '@/lib/graph/graph-store';
+import { getRepositoryGraph, getActiveRepositoryGraph } from '@/lib/graph/graph-store';
 import { answerRepositoryQuestion } from '@/lib/ask/ask-service';
 
 const MAX_QUESTION_LENGTH = 2000;
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     if (recentQuestions !== undefined && (!Array.isArray(recentQuestions) || recentQuestions.length > 4 || recentQuestions.some((item) => typeof item !== 'string' || item.length > MAX_QUESTION_LENGTH))) {
       return NextResponse.json({ error: 'Recent question context must contain at most four short questions.' }, { status: 400 });
     }
-    const graph = getRepositoryGraph(repoId.trim());
+    const graph = getRepositoryGraph(repoId.trim()) || getActiveRepositoryGraph();
     if (!graph) return NextResponse.json({ error: 'That repository is not available in the current analysis.' }, { status: 404 });
     return NextResponse.json(await answerRepositoryQuestion(graph, {
       repoId: graph.repoId,

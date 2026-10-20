@@ -68,9 +68,10 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams;
+    const invId = sp.get('investigationId');
     const sample = sp.get('sample') || 'commerce-jwt';
 
-    const report: EngineeringDecisionReport =
+    const report: EngineeringDecisionReport = invId ? (await import('@/lib/reports/report-generator')).buildReportFromInvestigation((await import('@/lib/investigations/investigation-store')).investigationStore.getById(invId, 'user-dev-current') || SAMPLE_REPORT_JWT_REFACTOR) :
       sample === 'minimal' ? SAMPLE_REPORT_MINIMAL : SAMPLE_REPORT_JWT_REFACTOR;
 
     const builder = new ReportPdfBuilder(report);

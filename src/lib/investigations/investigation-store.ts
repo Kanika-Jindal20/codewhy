@@ -8,6 +8,7 @@ import {
 import { SAMPLE_REPO_ECOMMERCE } from '@/lib/graph/graph-store';
 import { detectEvidenceStaleness } from './staleness-detector';
 import { answerFollowUpQuestion } from './follow-up-engine';
+import { readDataFile, writeDataFile } from '@/lib/storage/json-store';
 
 export const CURRENT_USER_ID = 'user-dev-current';
 export const CURRENT_USER_NAME = 'Current Developer';
@@ -190,11 +191,16 @@ class InvestigationRepository {
     }
   }
 
+  public persist(): void {
+    writeDataFile('investigations.json', Array.from(this.investigations.values()));
+  }
+
   public resetToDefault(): void {
     this.investigations.clear();
     for (const inv of INITIAL_INVESTIGATIONS) {
       this.investigations.set(inv.id, JSON.parse(JSON.stringify(inv)));
     }
+    this.persist();
   }
 
   // Check read access: Public and Team are readable by all; Private is readable ONLY by owner
@@ -291,6 +297,7 @@ class InvestigationRepository {
     }
 
     this.investigations.set(id, newInv);
+    this.persist();
     return newInv;
   }
 
@@ -308,6 +315,7 @@ class InvestigationRepository {
     if (input.tags !== undefined) inv.tags = input.tags;
 
     inv.updatedAt = new Date().toISOString();
+    this.persist();
     return inv;
   }
 
@@ -319,7 +327,9 @@ class InvestigationRepository {
       throw new Error('Forbidden: Only the owner can delete this investigation.');
     }
 
-    return this.investigations.delete(id);
+    const deleted = this.investigations.delete(id);
+    if (deleted) this.persist();
+    return deleted;
   }
 
   public appendFollowUp(
@@ -353,6 +363,7 @@ class InvestigationRepository {
     };
 
     inv.entries.push(entry);
+    this.persist();
     inv.updatedAt = now;
 
     return { ...inv, staleEvidenceStatus: detectEvidenceStaleness(inv) };

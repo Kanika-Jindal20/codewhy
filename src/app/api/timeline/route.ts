@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRepositoryGraph } from '@/lib/graph/graph-store';
+import { getRepositoryGraph, getActiveRepositoryGraph } from '@/lib/graph/graph-store';
 import { buildDecisionTimeline, type TimelineFilters } from '@/lib/timeline/timeline-service';
 import type { DecisionTimelineStatus } from '@/types/timeline';
 import type { EvidenceSource } from '@/types/evidence';
@@ -10,8 +10,7 @@ const SOURCES: EvidenceSource['type'][] = ['file_span', 'commit', 'pull_request'
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const repoId = params.get('repoId')?.trim();
-  if (!repoId) return NextResponse.json({ error: 'Select a repository first.' }, { status: 400 });
-  const graph = getRepositoryGraph(repoId);
+  const graph = (repoId ? getRepositoryGraph(repoId) : undefined) || getActiveRepositoryGraph();
   if (!graph) return NextResponse.json({ error: 'That repository is not available in the current analysis.' }, { status: 404 });
   const rawStatus = params.get('status');
   const rawSource = params.get('sourceType');

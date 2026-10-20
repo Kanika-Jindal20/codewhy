@@ -1,6 +1,8 @@
 import React from 'react';
 import type { Metadata } from 'next';
-import { ArchitectureExplorerClient } from '@/app/architecture/ArchitectureExplorerClient';
+import { KnowledgeGraphClient } from './KnowledgeGraphClient';
+import { getActiveRepositoryGraph, getRepositoryGraph } from '@/lib/graph/graph-store';
+import { getMostConnectedNode } from '@/lib/graph/graph-query';
 
 export const metadata: Metadata = {
   title: 'Knowledge Graph — CodeWhy',
@@ -8,15 +10,22 @@ export const metadata: Metadata = {
     'Explore codebase entity relationships, call hierarchies, and architectural decisions with interactive visual graphs.',
 };
 
-export default function KnowledgeGraphPage() {
-  const repoId = 'repo-commerce-core';
-  const repoName = 'acme/commerce-core';
-  const suggestedSeedNodeId = 'node-middleware-auth';
-  const totalNodes = 10;
-  const totalEdges = 9;
+export default async function KnowledgeGraphPage(props: {
+  searchParams?: Promise<{ repoId?: string }>;
+}) {
+  const searchParams = props.searchParams ? await props.searchParams : undefined;
+  const targetRepoId = searchParams?.repoId;
+  const activeGraph = targetRepoId ? getRepositoryGraph(targetRepoId) || getActiveRepositoryGraph() : getActiveRepositoryGraph();
+
+  const repoId = activeGraph.repoId;
+  const repoName = activeGraph.repoName;
+  const suggestedSeed = getMostConnectedNode(activeGraph);
+  const suggestedSeedNodeId = suggestedSeed?.id ?? (activeGraph.nodes[0]?.id || null);
+  const totalNodes = activeGraph.nodes.length;
+  const totalEdges = activeGraph.edges.length;
 
   return (
-    <ArchitectureExplorerClient
+    <KnowledgeGraphClient
       repoId={repoId}
       repoName={repoName}
       suggestedSeedNodeId={suggestedSeedNodeId}

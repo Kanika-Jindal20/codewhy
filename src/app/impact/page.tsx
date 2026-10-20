@@ -14,7 +14,7 @@ import {
   ShieldAlert,
   Sparkles,
 } from 'lucide-react';
-import { SAMPLE_REPO_ECOMMERCE } from '@/lib/graph/graph-store';
+import { SAMPLE_REPO_ECOMMERCE } from '@/lib/graph/sample-repo';
 import { analyzeChangeImpact } from '@/lib/impact/impact-service';
 import { 
   ImpactAnalysisResult, 
@@ -38,6 +38,9 @@ import { EngineeringDecisionReport } from '@/types/report';
 import Link from 'next/link';
 
 export default function ImpactAnalysisPage() {
+  const [activeRepoId, setActiveRepoId] = useState<string>(SAMPLE_REPO_ECOMMERCE.repoId);
+  const [activeRepoName, setActiveRepoName] = useState<string>(SAMPLE_REPO_ECOMMERCE.repoName);
+  const [availableNodes, setAvailableNodes] = useState<GraphNode[]>(SAMPLE_REPO_ECOMMERCE.nodes);
   const [selectedNode, setSelectedNode] = useState<GraphNode>(SAMPLE_REPO_ECOMMERCE.nodes[0]);
   const [changeCategory, setChangeCategory] = useState<ChangeCategory>('breaking_interface');
   const [changeDescription, setChangeDescription] = useState<string>(
@@ -51,13 +54,44 @@ export default function ImpactAnalysisPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
 
+  useEffect(() => {
+    async function loadActiveRepo() {
+      try {
+        const repoRes = await fetch('/api/repositories');
+        if (repoRes.ok) {
+          const repoData = await repoRes.json();
+          const active = repoData.repositories?.find((r: any) => r.isActive) || repoData.repositories?.[0];
+          if (active) {
+            setActiveRepoId(active.repoId);
+            setActiveRepoName(active.repoName);
+
+            const graphRes = await fetch(`/api/graph?repoId=${encodeURIComponent(active.repoId)}&limit=100`);
+            if (graphRes.ok) {
+              const graphData = await graphRes.json();
+              if (Array.isArray(graphData.nodes) && graphData.nodes.length > 0) {
+                setAvailableNodes(graphData.nodes);
+                const params = new URLSearchParams(window.location.search);
+                const targetId = params.get('targetNodeId');
+                const matched = targetId ? graphData.nodes.find((n: GraphNode) => n.id === targetId) : graphData.nodes[0];
+                if (matched) setSelectedNode(matched);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load repository graph nodes for impact analysis:', err);
+      }
+    }
+    loadActiveRepo();
+  }, []);
+
   // Check URL query params for targetNodeId pre-selection (e.g. from Architecture Explorer)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const targetId = params.get('targetNodeId');
       if (targetId) {
-        const found = SAMPLE_REPO_ECOMMERCE.nodes.find((n) => n.id === targetId);
+        const found = availableNodes.find((n) => n.id === targetId);
         if (found) {
           setSelectedNode(found);
         }
@@ -166,7 +200,7 @@ export default function ImpactAnalysisPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          repoId: SAMPLE_REPO_ECOMMERCE.repoId,
+          repoId: activeRepoId,
           targetNodeId: selectedNode.id,
           changeCategory,
           proposedChangeDescription: changeDescription,
@@ -185,7 +219,7 @@ export default function ImpactAnalysisPage() {
       console.warn('API fetch fallback to direct service:', err);
       try {
         const fallback = analyzeChangeImpact(SAMPLE_REPO_ECOMMERCE, {
-          repoId: SAMPLE_REPO_ECOMMERCE.repoId,
+          repoId: activeRepoId,
           targetNodeId: selectedNode.id,
           changeCategory,
           proposedChangeDescription: changeDescription,
@@ -297,7 +331,7 @@ export default function ImpactAnalysisPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-5">
           <ComponentSelector
-            nodes={SAMPLE_REPO_ECOMMERCE.nodes}
+            nodes={availableNodes}
             selectedNodeId={selectedNode.id}
             onSelectNode={(node) => {
               setSelectedNode(node);

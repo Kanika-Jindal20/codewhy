@@ -229,3 +229,148 @@ export async function lookupPublicGitHubRepository(
     defaultBranch: payload.default_branch,
   };
 }
+
+export interface FetchedCommit {
+  hash: string;
+  message: string;
+  author: string;
+  timestamp: string;
+  filesChanged?: string[];
+}
+
+/**
+ * Fetches actual source files from a GitHub repository for real AST analysis.
+ */
+export async function fetchGitHubRepositorySourceFiles(
+  owner: string,
+  name: string,
+  branch: string = 'main',
+  maxFiles: number = 40
+): Promise<{
+  files: Array<{ filePath: string; content: string }>;
+  commits: FetchedCommit[];
+  defaultBranch: string;
+}> {
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'CodeWhy-Intelligence-Platform',
+  };
+  if (process.env.GITHUB_TOKEN?.trim()) {
+    headers['Authorization'] = `Bearer ${process.env.GITHUB_TOKEN.trim()}`;
+  }
+
+  // 1. Fetch Git Tree recursively
+  const treeUrl = `${GITHUB_API_ORIGIN}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
+  const treeRes = await fetch(treeUrl, { headers, cache: 'no-store' });
+  if (!treeRes.ok) {
+    throw new Error(`Failed to fetch file tree from GitHub (${treeRes.status}: ${treeRes.statusText})`);
+  }
+
+  const treeData = (await treeRes.json()) as { tree?: Array<{ path: string; type: string; size?: number }> };
+  if (!Array.isArray(treeData.tree)) {
+    throw new Error('Invalid file tree returned by GitHub.');
+  }
+
+  // Filter valid code files, excluding heavy artifacts
+  const codeFiles = treeData.tree
+    .filter(item => {
+      if (item.type !== 'blob') return false;
+      const p = item.path.toLowerCase();
+      if (p.includes('node_modules/') || p.includes('.git/') || p.includes('.next/') || p.includes('dist/') || p.includes('build/')) return false;
+      if (p.endsWith('package-lock.json') || p.endsWith('yarn.lock') || p.endsWith('pnpm-lock.yaml')) return false;
+      if (p.endsWith('.min.js') || p.endsWith('.min.css')) return false;
+      return /\.(ts|tsx|js|jsx|json)$/i.test(p);
+    })
+    .slice(0, maxFiles);
+
+  // 2. Fetch content for each selected file
+  const files: Array<{ filePath: string; content: string }> = [];
+  await Promise.all(
+    codeFiles.map(async file => {
+      try {
+        const rawUrl = `https://raw.githubusercontent.com/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/${encodeURIComponent(branch)}/${file.path}`;
+        const rawRes = await fetch(rawUrl, {
+          headers: process.env.GITHUB_TOKEN ? { Authorization: headers['Authorization'] } : {},
+          cache: 'no-store',
+        });
+        if (rawRes.ok) {
+          const content = await rawRes.text();
+          if (content.length < 200_000) {
+            files.push({ filePath: file.path, content });
+          }
+        }
+      } catch {
+        // Skip inaccessible file
+      }
+    })
+  );
+
+  // 3. Fetch recent commits
+  const commits: FetchedCommit[] = [];
+  try {
+    const commitsUrl = `${GITHUB_API_ORIGIN}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/commits?per_page=10`;
+    const commitsRes = await fetch(commitsUrl, { headers, cache: 'no-store' });
+    if (commitsRes.ok) {
+      const commitList = (await commitsRes.json()) as any[];
+      if (Array.isArray(commitList)) {
+        for (const c of commitList) {
+          commits.push({
+            hash: c.sha?.slice(0, 7) || 'unknown',
+            message: c.commit?.message?.split('\n')[0] || 'Commit',
+            author: `${c.commit?.author?.name || 'Developer'} <${c.commit?.author?.email || ''}>`,
+            timestamp: c.commit?.author?.date || new Date().toISOString(),
+          });
+        }
+      }
+    }
+  } catch {
+    // Non-fatal if commit history unavailable
+  }
+
+  return { files, commits, defaultBranch: branch };
+}
+
+/**
+ * Scans local workspace repository files directly from disk.
+ */
+export function scanLocalWorkspaceFiles(maxFiles: number = 60): Array<{ filePath: string; content: string }> {
+  const fs = require('fs');
+  const path = require('path');
+  const rootDir = process.cwd();
+  const results: Array<{ filePath: string; content: string }> = [];
+
+  function walk(dir: string) {
+    if (results.length >= maxFiles) return;
+    try {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (results.length >= maxFiles) break;
+        const full = path.join(dir, entry.name);
+        const rel = path.relative(rootDir, full).replace(/\\/g, '/');
+
+        if (entry.isDirectory()) {
+          if (['node_modules', '.next', '.git', 'dist', 'build', 'coverage', '.gemini'].includes(entry.name)) continue;
+          walk(full);
+        } else if (entry.isFile()) {
+          if (/\.(ts|tsx|js|jsx|json)$/i.test(entry.name) && !entry.name.endsWith('.lock') && !entry.name.includes('.min.')) {
+            try {
+              const stat = fs.statSync(full);
+              if (stat.size < 150_000) {
+                const content = fs.readFileSync(full, 'utf8');
+                results.push({ filePath: rel, content });
+              }
+            } catch {
+              // Ignore unreadable
+            }
+          }
+        }
+      }
+    } catch {
+      // Ignore directory read error
+    }
+  }
+
+  walk(path.join(rootDir, 'src'));
+  return results;
+}

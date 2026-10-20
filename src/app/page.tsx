@@ -25,13 +25,13 @@ import {
   Settings2,
   Sparkles,
 } from 'lucide-react';
-import { SAMPLE_REPO_ECOMMERCE } from '@/lib/graph/graph-store';
+import { SAMPLE_REPO_ECOMMERCE, getActiveRepositoryGraph } from '@/lib/graph/graph-store';
 import { COMMERCE_COMMIT_HISTORY } from '@/lib/impact/heuristics-engine';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 
 export default function DashboardOverviewPage() {
-  const repo = SAMPLE_REPO_ECOMMERCE;
+  const repo = getActiveRepositoryGraph();
   const commits = COMMERCE_COMMIT_HISTORY.slice(0, 4);
 
   // Exact metrics computed from real graph data

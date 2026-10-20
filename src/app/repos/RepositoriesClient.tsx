@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   FolderGit2, 
@@ -19,6 +19,9 @@ import {
   Boxes,
   ArrowRight,
   Sparkles,
+  Database,
+  RefreshCw,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -30,64 +33,126 @@ interface RegisteredRepo {
   updatedAt: string;
   nodeCount: number;
   edgeCount: number;
-  primaryLanguage: string;
-  description: string;
+  primaryLanguage?: string;
+  description?: string;
+  isDemo?: boolean;
+  isActive?: boolean;
 }
 
 export function RepositoriesClient() {
-  const [repos] = useState<RegisteredRepo[]>([
-    {
-      repoId: 'repo-commerce-core',
-      repoName: 'acme/commerce-core',
-      updatedAt: '2026-10-15T18:30:00Z',
-      nodeCount: 24,
-      edgeCount: 32,
-      primaryLanguage: 'TypeScript',
-      description: 'Core e-commerce session management, token verification, and checkout routing pipelines.',
-    },
-  ]);
+  const [repos, setRepos] = useState<RegisteredRepo[]>([]);
+  const [neo4jStatus, setNeo4jStatus] = useState<{
+    isConfigured: boolean;
+    connected: boolean;
+    serverInfo?: string;
+    error?: string;
+  } | null>(null);
+
+  const [isLoadingRepos, setIsLoadingRepos] = useState(true);
 
   const [lookupUrl, setLookupUrl] = useState('');
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [lookupResult, setLookupResult] = useState<any | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
 
-  // Neo4j Indexing State
-  const [isIndexingNeo4j, setIsIndexingNeo4j] = useState(false);
-  const [neo4jIndexStatus, setNeo4jIndexStatus] = useState<{
+  // Indexing State
+  const [isIndexing, setIsIndexing] = useState(false);
+  const [deletingRepoId, setDeletingRepoId] = useState<string | null>(null);
+  const [indexStatus, setIndexStatus] = useState<{
     success?: boolean;
     message?: string;
     error?: string;
+    neo4jConnected?: boolean;
+    neo4jHelp?: string;
   } | null>(null);
 
-  const handleIndexIntoNeo4j = async (targetRepoId: string) => {
-    setIsIndexingNeo4j(true);
-    setNeo4jIndexStatus(null);
+  const loadRepositories = async () => {
+    try {
+      setIsLoadingRepos(true);
+      const res = await fetch('/api/repositories');
+      if (res.ok) {
+        const data = await res.json();
+        setRepos(data.repositories || []);
+        setNeo4jStatus(data.neo4j || null);
+      }
+    } catch (err) {
+      console.warn('Failed to load repositories:', err);
+    } finally {
+      setIsLoadingRepos(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRepositories();
+  }, []);
+
+  const handleIndex = async (payload: { url?: string; repoId?: string; isLocal?: boolean; branch?: string }) => {
+    setIsIndexing(true);
+    setIndexStatus(null);
     try {
       const res = await fetch('/api/repositories/index', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repoId: targetRepoId, useSample: true }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setNeo4jIndexStatus({
+        setIndexStatus({
           success: true,
-          message: `Indexed into Neo4j: ${data.nodesIndexed} code nodes, ${data.edgesIndexed} relationships.`,
+          message: data.message,
+          neo4jConnected: data.neo4jConnected,
+          neo4jHelp: data.neo4jHelp,
         });
+        await loadRepositories();
       } else {
-        setNeo4jIndexStatus({
+        setIndexStatus({
           success: false,
-          error: data.error || 'Neo4j connection inactive. Set NEO4J_URI in .env.',
+          error: data.error || data.details || 'Failed to index repository.',
         });
       }
     } catch (err: unknown) {
-      setNeo4jIndexStatus({
+      setIndexStatus({
         success: false,
-        error: err instanceof Error ? err.message : 'Network error indexing into Neo4j.',
+        error: err instanceof Error ? err.message : 'Network error indexing repository.',
       });
     } finally {
-      setIsIndexingNeo4j(false);
+      setIsIndexing(false);
+    }
+  };
+
+  const handleDeleteRepo = async (repoId: string, repoName: string) => {
+    if (!window.confirm(`Are you sure you want to delete repository "${repoName}" from CodeWhy?`)) {
+      return;
+    }
+    setDeletingRepoId(repoId);
+    try {
+      const res = await fetch(`/api/repositories?repoId=${encodeURIComponent(repoId)}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        await loadRepositories();
+      } else {
+        alert(data.error || 'Failed to delete repository.');
+      }
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Network error deleting repository.');
+    } finally {
+      setDeletingRepoId(null);
+    }
+  };
+  const handleActivateRepo = async (repoId: string) => {
+    try {
+      const res = await fetch('/api/repositories', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repoId }),
+      });
+      if (res.ok) {
+        await loadRepositories();
+      }
+    } catch (err) {
+      console.error('Failed to switch repository:', err);
     }
   };
 
@@ -137,38 +202,82 @@ export function RepositoriesClient() {
                 </span>
               </div>
               <p className="text-sm text-blue-100 mt-1 max-w-2xl">
-                Manage indexed codebases, explore verified entity graphs, or inspect public GitHub repositories.
+                Manage indexed codebases, explore verified entity graphs, and parse real GitHub or local repositories into Neo4j.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
             <span className="text-xs font-bold px-3.5 py-2 rounded-xl bg-white/20 backdrop-blur-sm text-white border border-white/30 flex items-center gap-2 shadow-sm">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              1 Active Repository Indexed
+              {repos.length} {repos.length === 1 ? 'Repository' : 'Repositories'} Available
+            </span>
+            <span className={`text-xs font-bold px-3 py-2 rounded-xl backdrop-blur-sm border flex items-center gap-2 shadow-sm ${
+              neo4jStatus?.connected 
+                ? 'bg-emerald-500/20 text-emerald-200 border-emerald-400/30' 
+                : 'bg-amber-500/20 text-amber-200 border-amber-400/30'
+            }`}>
+              <Database className="w-3.5 h-3.5" />
+              {neo4jStatus?.connected ? 'Neo4j Connected' : 'Neo4j Inactive'}
             </span>
           </div>
         </div>
       </header>
+
+      {/* Index Status Notification */}
+      {indexStatus && (
+        <div className={`p-5 rounded-2xl border ${
+          indexStatus.success 
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+            : 'bg-red-50 border-red-200 text-red-800'
+        }`}>
+          <div className="flex items-start gap-3">
+            {indexStatus.success ? (
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+            )}
+            <div>
+              <p className="text-sm font-bold">{indexStatus.success ? 'Indexing Completed' : 'Indexing Error'}</p>
+              <p className="text-xs mt-1 leading-relaxed">{indexStatus.message || indexStatus.error}</p>
+              {indexStatus.neo4jHelp && (
+                <p className="text-xs mt-2 text-slate-600 font-mono bg-white/70 p-2 rounded-lg border border-slate-200">
+                  {indexStatus.neo4jHelp}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Active Repositories List */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-bold text-[#172033]">
-              Active Indexed Repositories
+              Configured & Indexed Repositories
             </h2>
             <p className="text-xs text-text-secondary">
-              Fully parsed AST knowledge graph ready for architectural reasoning.
+              Fully parsed AST knowledge graphs ready for architectural reasoning, impact analysis, and Q&amp;A.
             </p>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadRepositories}
+            icon={<RefreshCw className={`w-3.5 h-3.5 ${isLoadingRepos ? 'animate-spin' : ''}`} />}
+          >
+            Refresh
+          </Button>
         </div>
 
         <div className="space-y-4">
           {repos.map((repo) => (
             <div
               key={repo.repoId}
-              className="bg-white border border-app-border rounded-3xl p-6 sm:p-8 transition-all hover:shadow-card shadow-xs space-y-6"
+              className={`bg-white border rounded-3xl p-6 sm:p-8 transition-all hover:shadow-card shadow-xs space-y-6 ${
+                repo.isActive ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-app-border'
+              }`}
             >
               <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
                 <div className="space-y-3.5 max-w-2xl">
@@ -177,13 +286,25 @@ export function RepositoriesClient() {
                       <FolderGit2 className="w-5 h-5 stroke-[2]" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-[#172033]">
-                        {repo.repoName}
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-bold text-[#172033]">
+                          {repo.repoName}
+                        </h3>
+                        {repo.isActive && (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-blue-600 text-white">
+                            Active Workspace
+                          </span>
+                        )}
+                        {repo.isDemo && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                            Demo Sample
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 border border-emerald-500/20">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          AST Verified & Indexed
+                          AST Verified
                         </span>
                         <span className="text-slate-400 text-xs">·</span>
                         <span className="text-xs text-text-muted font-mono">
@@ -193,102 +314,106 @@ export function RepositoriesClient() {
                     </div>
                   </div>
 
-                  <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
-                    {repo.description}
-                  </p>
+                  {repo.description && (
+                    <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
+                      {repo.description}
+                    </p>
+                  )}
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
                     <div className="p-3 rounded-xl bg-[#F8FAFC] border border-app-border">
                       <div className="flex items-center gap-1 text-[11px] font-bold text-text-muted uppercase tracking-wider">
-                        <GitBranch className="w-3.5 h-3.5 text-[#3B82F6]" />
-                        Branch
+                        <Network className="w-3.5 h-3.5 text-[#3B82F6]" />
+                        AST Nodes
                       </div>
                       <div className="text-xs font-mono font-bold text-[#172033] mt-1">
-                        main
+                        {repo.nodeCount} entities
                       </div>
                     </div>
 
                     <div className="p-3 rounded-xl bg-[#F8FAFC] border border-app-border">
                       <div className="flex items-center gap-1 text-[11px] font-bold text-text-muted uppercase tracking-wider">
-                        <FileCode className="w-3.5 h-3.5 text-[#8B5CF6]" />
-                        Language
+                        <Share2 className="w-3.5 h-3.5 text-[#8B5CF6]" />
+                        Relationships
                       </div>
-                      <div className="text-xs font-bold text-[#8B5CF6] mt-1">
-                        {repo.primaryLanguage}
-                      </div>
-                    </div>
-
-                    <div className="p-3 rounded-xl bg-[#F8FAFC] border border-app-border">
-                      <div className="flex items-center gap-1 text-[11px] font-bold text-text-muted uppercase tracking-wider">
-                        <Network className="w-3.5 h-3.5 text-teal-600" />
-                        Graph Size
-                      </div>
-                      <div className="text-xs font-bold text-teal-700 mt-1">
-                        {repo.nodeCount} nodes · {repo.edgeCount} edges
+                      <div className="text-xs font-mono font-bold text-[#8B5CF6] mt-1">
+                        {repo.edgeCount || 0} edges
                       </div>
                     </div>
 
                     <div className="p-3 rounded-xl bg-[#F8FAFC] border border-app-border">
                       <div className="flex items-center gap-1 text-[11px] font-bold text-text-muted uppercase tracking-wider">
-                        <Clock className="w-3.5 h-3.5 text-amber-600" />
-                        Last Sync
+                        <Clock className="w-3.5 h-3.5 text-text-muted" />
+                        Updated
                       </div>
-                      <div className="text-xs font-mono font-medium text-text-secondary mt-1">
+                      <div className="text-xs font-bold text-text-primary mt-1">
                         {new Date(repo.updatedAt).toLocaleDateString()}
                       </div>
                     </div>
-                  </div>
 
-                  {neo4jIndexStatus && (
-                    <div className={`p-3.5 rounded-2xl text-xs font-bold border transition-all ${
-                      neo4jIndexStatus.success
-                        ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
-                        : 'bg-amber-50 border-amber-300 text-amber-900'
-                    }`}>
-                      {neo4jIndexStatus.success ? '✓ ' : '⚠️ '}
-                      {neo4jIndexStatus.message || neo4jIndexStatus.error}
+                    <div className="p-3 rounded-xl bg-[#F8FAFC] border border-app-border">
+                      <div className="flex items-center gap-1 text-[11px] font-bold text-text-muted uppercase tracking-wider">
+                        <FileCode className="w-3.5 h-3.5 text-emerald-600" />
+                        Language
+                      </div>
+                      <div className="text-xs font-bold text-emerald-700 mt-1">
+                        {repo.primaryLanguage || 'TypeScript'}
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap lg:flex-col items-stretch gap-2.5 shrink-0 pt-2 lg:pt-0 min-w-[190px]">
-                  <button
-                    onClick={() => handleIndexIntoNeo4j(repo.repoId)}
-                    disabled={isIndexingNeo4j}
-                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50"
-                  >
-                    {isIndexingNeo4j ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>Indexing into Neo4j…</span>
-                      </>
-                    ) : (
-                      <>
-                        <Network className="w-3.5 h-3.5" />
-                        <span>Index into Neo4j</span>
-                      </>
-                    )}
-                  </button>
-                  <Link href="/architecture">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      icon={<Compass className="w-3.5 h-3.5 text-[#8B5CF6]" />}
-                      className="w-full justify-center text-[#8B5CF6] hover:bg-purple-50"
-                    >
-                      Architecture Graph
-                    </Button>
-                  </Link>
-                  <Link href="/impact">
+                {/* Right Action buttons */}
+                <div className="flex flex-col sm:flex-row lg:flex-col gap-2 shrink-0 pt-2 lg:pt-0">
+                  {!repo.isActive ? (
                     <Button
                       variant="primary"
                       size="sm"
-                      icon={<Zap className="w-3.5 h-3.5" />}
-                      className="w-full justify-center"
+                      onClick={() => handleActivateRepo(repo.repoId)}
+                      className="font-bold bg-blue-600 hover:bg-blue-700 text-white"
                     >
-                      Impact Blast Radius
+                      Set as Active
+                    </Button>
+                  ) : (
+                    <div className="text-xs font-bold text-blue-600 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200">
+                      <CheckCircle2 className="w-4 h-4" /> Selected Active
+                    </div>
+                  )}
+
+                  <Link href={`/architecture?repoId=${repo.repoId}`}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={<Compass className="w-3.5 h-3.5" />}
+                      className="w-full justify-center text-xs font-semibold"
+                    >
+                      Architecture
                     </Button>
                   </Link>
+
+                  <Link href={`/impact?repoId=${repo.repoId}`}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={<Zap className="w-3.5 h-3.5" />}
+                      className="w-full justify-center text-xs font-semibold"
+                    >
+                      Impact Analysis
+                    </Button>
+                  </Link>
+
+                  {!repo.isDemo && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteRepo(repo.repoId, repo.repoName)}
+                      isLoading={deletingRepoId === repo.repoId}
+                      icon={<Trash2 className="w-3.5 h-3.5 text-red-500" />}
+                      className="w-full justify-center text-xs font-semibold text-red-600 hover:bg-red-50 hover:text-red-700 border border-red-200"
+                    >
+                      Delete
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -296,18 +421,31 @@ export function RepositoriesClient() {
         </div>
       </section>
 
-      {/* Connect / Lookup Repository Section */}
-      <section className="bg-white border border-app-border rounded-3xl p-6 sm:p-8 space-y-4 shadow-card">
-        <div>
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#3B82F6]" />
-            <h2 className="text-base font-bold text-[#172033]">
-              Connect & Inspect GitHub Repository
-            </h2>
+      {/* Connect GitHub or Local Workspace */}
+      <section className="bg-white border border-app-border rounded-3xl p-6 sm:p-8 space-y-6 shadow-card">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-[#3B82F6]" />
+              <h2 className="text-base font-bold text-[#172033]">
+                Connect &amp; Index Real Repository
+              </h2>
+            </div>
+            <p className="text-xs sm:text-sm text-text-secondary mt-0.5">
+              Parse real TypeScript AST files from public GitHub repositories or index your local workspace codebase.
+            </p>
           </div>
-          <p className="text-xs sm:text-sm text-text-secondary mt-0.5">
-            Look up any public GitHub repository to inspect its metadata, branch structure, and AST readiness.
-          </p>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleIndex({ isLocal: true })}
+            isLoading={isIndexing}
+            icon={<Boxes className="w-3.5 h-3.5 text-blue-600" />}
+            className="font-bold text-xs"
+          >
+            Index Local Workspace (codewhy)
+          </Button>
         </div>
 
         {/* Quick demo links */}
@@ -359,31 +497,44 @@ export function RepositoriesClient() {
         )}
 
         {lookupResult && (
-          <div className="mt-4 p-5 rounded-2xl border border-blue-200 bg-[#EBF2FF]/30 space-y-3.5 shadow-2xs">
-            <div className="flex items-center justify-between">
+          <div className="mt-4 p-5 rounded-2xl border border-blue-200 bg-[#EBF2FF]/30 space-y-4 shadow-2xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-blue-500/15 text-[#3B82F6] flex items-center justify-center">
                   <FolderGit2 className="w-4 h-4 stroke-[2]" />
                 </div>
                 <div>
                   <span className="font-bold text-sm text-[#172033] block">
-                    {lookupResult.fullName || lookupResult.name}
+                    {lookupResult.name}
                   </span>
                   <span className="text-[11px] text-text-muted font-mono">
-                    Public GitHub Repository
+                    Owner: {lookupResult.owner} · Default Branch: {lookupResult.defaultBranch || 'main'}
                   </span>
                 </div>
               </div>
-              {lookupResult.url && (
-                <a
-                  href={lookupResult.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-semibold text-[#3B82F6] hover:underline flex items-center gap-1 bg-white px-3 py-1.5 rounded-lg border border-blue-200 shadow-2xs"
+
+              <div className="flex items-center gap-2">
+                {lookupResult.url && (
+                  <a
+                    href={lookupResult.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-[#3B82F6] hover:underline flex items-center gap-1 bg-white px-3 py-1.5 rounded-lg border border-blue-200 shadow-2xs"
+                  >
+                    GitHub <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+
+                <Button
+                  variant="primary"
+                  size="sm"
+                  isLoading={isIndexing}
+                  onClick={() => handleIndex({ url: lookupResult.url, branch: lookupResult.defaultBranch })}
+                  className="font-bold bg-blue-600 hover:bg-blue-700 text-white"
                 >
-                  Open in GitHub <ExternalLink className="w-3 h-3" />
-                </a>
-              )}
+                  Index &amp; Parse into Platform
+                </Button>
+              </div>
             </div>
 
             {lookupResult.description && (
@@ -397,13 +548,8 @@ export function RepositoriesClient() {
                 Default Branch: <strong className="text-[#172033]">{lookupResult.defaultBranch || 'main'}</strong>
               </span>
               <span className="px-2.5 py-1 rounded-md bg-white border border-app-border">
-                Language: <strong className="text-[#8B5CF6]">{lookupResult.language || 'Multi-language'}</strong>
+                Language: <strong className="text-[#8B5CF6]">{lookupResult.primaryLanguage || 'Multi-language'}</strong>
               </span>
-              {lookupResult.stars !== undefined && (
-                <span className="px-2.5 py-1 rounded-md bg-white border border-app-border">
-                  Stars: <strong className="text-amber-600">{lookupResult.stars}</strong>
-                </span>
-              )}
             </div>
           </div>
         )}

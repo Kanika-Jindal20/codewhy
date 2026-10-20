@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CalendarClock, GitCommitHorizontal, History, LoaderCircle, Search } from 'lucide-react';
-import { SAMPLE_REPO_ECOMMERCE } from '@/lib/graph/graph-store';
+import { SAMPLE_REPO_ECOMMERCE } from '@/lib/graph/sample-repo';
 import type { DecisionTimelineEvent, DecisionTimelineStatus } from '@/types/timeline';
 import type { EvidenceSource } from '@/types/evidence';
 import { EvidenceCard } from '@/components/evidence/EvidenceCard';
@@ -72,13 +72,23 @@ export function DecisionTimelineClient() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const repo = SAMPLE_REPO_ECOMMERCE;
+  const [activeRepoId, setActiveRepoId] = useState<string>(SAMPLE_REPO_ECOMMERCE.repoId);
+
+  useEffect(() => {
+    fetch('/api/repositories')
+      .then(r => r.json())
+      .then(d => {
+        const active = d.repositories?.find((r: any) => r.isActive) || d.repositories?.[0];
+        if (active) setActiveRepoId(active.repoId);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
     async function load() {
       setLoading(true); setError(null);
-      const params = new URLSearchParams({ repoId: repo.repoId, status, sourceType });
+      const params = new URLSearchParams({ repoId: activeRepoId, status, sourceType });
       if (componentId) params.set('componentId', componentId);
       if (from) params.set('from', from);
       if (to) params.set('to', to);
@@ -95,7 +105,7 @@ export function DecisionTimelineClient() {
     }
     void load();
     return () => controller.abort();
-  }, [repo.repoId, status, sourceType, componentId, from, to]);
+  }, [activeRepoId, status, sourceType, componentId, from, to]);
 
   const visibleEvents = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -104,6 +114,11 @@ export function DecisionTimelineClient() {
   }, [payload, search]);
   const selected = visibleEvents.find((event) => event.id === selectedId) ?? visibleEvents[0];
   const related = selected?.relatedEventId ? payload?.events.find((event) => event.id === selected.relatedEventId) : undefined;
+  const repo = {
+    repoName: payload?.repoName || SAMPLE_REPO_ECOMMERCE.repoName,
+    isDemo: payload ? payload.isDemoData : Boolean(SAMPLE_REPO_ECOMMERCE.isDemo),
+    nodes: SAMPLE_REPO_ECOMMERCE.nodes,
+  };
   const components = repo.nodes.filter((node) => node.type !== 'commit').map((node) => ({ id: node.id, label: `${node.label} · ${node.filePath}` }));
 
   return (

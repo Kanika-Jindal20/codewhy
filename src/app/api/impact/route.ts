@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRepositoryGraph, SAMPLE_REPO_ECOMMERCE } from '@/lib/graph/graph-store';
+import { getRepositoryGraph, getActiveRepositoryGraph, SAMPLE_REPO_ECOMMERCE } from '@/lib/graph/graph-store';
 import { analyzeChangeImpact } from '@/lib/impact/impact-service';
 import { ChangeCategory, ImpactAnalysisRequest } from '@/types/impact';
 
@@ -33,8 +33,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Lookup repository graph (falls back to default sample if not found or empty)
-    const graph = getRepositoryGraph(repoId) || SAMPLE_REPO_ECOMMERCE;
+    // Lookup repository graph (falls back to active repo graph or default sample)
+    const graph = (repoId ? getRepositoryGraph(repoId) : undefined) || getActiveRepositoryGraph();
 
     const request: ImpactAnalysisRequest = {
       repoId: graph.repoId,
@@ -81,12 +81,12 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
-  const repoId = searchParams.get('repoId') || 'repo-commerce-core';
+  const repoId = searchParams.get('repoId');
   const targetNodeId = searchParams.get('targetNodeId') || 'node-auth-jwt';
   const changeCategory = (searchParams.get('category') as ChangeCategory) || 'breaking_interface';
   const description = searchParams.get('description') || 'Evaluate component blast radius';
 
-  const graph = getRepositoryGraph(repoId) || SAMPLE_REPO_ECOMMERCE;
+  const graph = (repoId ? getRepositoryGraph(repoId) : undefined) || getActiveRepositoryGraph();
   const targetExists = graph.nodes.some(n => n.id === targetNodeId);
 
   if (!targetExists) {
@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
   }
 
   const analysis = analyzeChangeImpact(graph, {
-    repoId,
+    repoId: graph.repoId,
     targetNodeId,
     changeCategory,
     proposedChangeDescription: description,

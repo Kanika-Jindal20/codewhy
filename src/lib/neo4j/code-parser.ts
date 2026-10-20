@@ -15,7 +15,8 @@ export interface SourceFileInput {
 export function parseSourceFilesToGraph(
   repoId: string,
   repoName: string,
-  files: SourceFileInput[]
+  files: SourceFileInput[],
+  commits?: Array<{ hash: string; message: string; author: string; timestamp: string }>
 ): KnowledgeGraph {
   const nodes: GraphNode[] = [];
   const edges: GraphEdge[] = [];
@@ -88,6 +89,21 @@ export function parseSourceFilesToGraph(
         },
       ],
     };
+
+    if (Array.isArray(commits) && commits.length > 0) {
+      const topCommit = commits[0];
+      fileNode.evidence?.push({
+        id: `ev-commit-${normPath.replace(/[^a-zA-Z0-9]/g, '_')}`,
+        type: 'commit',
+        title: `Commit ${topCommit.hash} - ${topCommit.message}`,
+        filePath: normPath,
+        commitHash: topCommit.hash,
+        commitMessage: topCommit.message,
+        author: topCommit.author,
+        timestamp: topCommit.timestamp,
+        confidenceScore: 0.95,
+      });
+    }
 
     nodes.push(fileNode);
     fileNodeMap.set(normPath, fileNode);

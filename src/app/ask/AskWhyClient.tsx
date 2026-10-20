@@ -1,8 +1,8 @@
 'use client';
 
-import React, { FormEvent, useState } from 'react';
+import React, { FormEvent, useState, useEffect } from 'react';
 import { ArrowUp, Bot, CircleHelp, FolderGit2, LoaderCircle, MessageSquareText, Sparkles, Zap } from 'lucide-react';
-import { SAMPLE_REPO_ECOMMERCE } from '@/lib/graph/graph-store';
+import { SAMPLE_REPO_ECOMMERCE } from '@/lib/graph/sample-repo';
 import type { AskWhyResponse } from '@/types/ask';
 import { EvidenceCard } from '@/components/evidence/EvidenceCard';
 import { ReliabilityIndicator } from '@/components/evidence/ReliabilityIndicator';
@@ -32,7 +32,28 @@ export function AskWhyClient() {
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const repo = SAMPLE_REPO_ECOMMERCE;
+  const [activeRepo, setActiveRepo] = useState<{ repoId: string; repoName: string }>({
+    repoId: SAMPLE_REPO_ECOMMERCE.repoId,
+    repoName: SAMPLE_REPO_ECOMMERCE.repoName,
+  });
+
+  useEffect(() => {
+    async function loadActive() {
+      try {
+        const res = await fetch('/api/repositories');
+        if (res.ok) {
+          const data = await res.json();
+          const active = data.repositories?.find((r: any) => r.isActive) || data.repositories?.[0];
+          if (active) {
+            setActiveRepo({ repoId: active.repoId, repoName: active.repoName });
+          }
+        }
+      } catch {
+        // Fallback
+      }
+    }
+    loadActive();
+  }, []);
 
   async function submitQuestion(value = question) {
     const trimmed = value.trim();
@@ -44,7 +65,7 @@ export function AskWhyClient() {
       const response = await fetch('/api/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repoId: repo.repoId, question: trimmed, conversationId, recentQuestions: turns.slice(-4).map((turn) => turn.question) }),
+        body: JSON.stringify({ repoId: activeRepo.repoId, question: trimmed, conversationId, recentQuestions: turns.slice(-4).map((turn) => turn.question) }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'Could not retrieve repository evidence.');
@@ -89,8 +110,8 @@ export function AskWhyClient() {
           <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
             <div className="flex items-center gap-2 rounded-2xl border border-white/30 bg-white/15 backdrop-blur-sm px-4 py-2.5 shadow-sm">
               <FolderGit2 className="w-4 h-4 text-purple-100" aria-hidden />
-              <span className="font-bold text-white text-sm">{repo.repoName}</span>
-              {repo.isDemo && (
+              <span className="font-bold text-white text-sm">{activeRepo.repoName}</span>
+              {activeRepo.repoId === SAMPLE_REPO_ECOMMERCE.repoId && (
                 <span className="rounded-full bg-amber-400/90 px-2.5 py-0.5 text-xs font-bold text-amber-900 border border-amber-300/50">
                   Demo
                 </span>
@@ -105,7 +126,7 @@ export function AskWhyClient() {
       </header>
 
       {/* ── Alerts ── */}
-      {repo.isDemo && (
+      {activeRepo.repoId === SAMPLE_REPO_ECOMMERCE.repoId && (
         <Alert type="warning" title="Sample repository data">
           This workspace currently uses illustrative sample records. Answers and citations demonstrate the workflow; they do not describe a live GitHub repository.
         </Alert>
