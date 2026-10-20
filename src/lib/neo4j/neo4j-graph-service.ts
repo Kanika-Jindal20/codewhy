@@ -167,7 +167,7 @@ export async function getGraphFromNeo4j(repoId: string): Promise<KnowledgeGraph 
       id: r.id,
       label: r.label,
       type: (r.type as NodeType) || 'file',
-      filePath: r.filePath || undefined,
+      filePath: r.filePath || '',
       line: r.line || undefined,
       description: r.description || undefined,
       metadata: {
@@ -292,7 +292,7 @@ export async function getNeighborhoodFromNeo4j(
       id: n.id,
       label: n.label,
       type: (n.type as NodeType) || 'file',
-      filePath: n.filePath || undefined,
+      filePath: n.filePath || '',
       line: n.line || undefined,
       description: n.description || undefined,
       metadata: {
@@ -358,7 +358,7 @@ export async function searchGraphInNeo4j(
       id: r.id,
       label: r.label,
       type: (r.type as NodeType) || 'file',
-      filePath: r.filePath || undefined,
+      filePath: r.filePath || '',
       line: r.line || undefined,
       description: r.description || undefined,
       metadata: { language: r.language || 'typescript' },

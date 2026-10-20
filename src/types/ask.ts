@@ -6,6 +6,7 @@ export type AskQuestionKind =
   | 'dependency'
   | 'decision_history'
   | 'change_impact'
+  | 'why'
   | 'unsupported';
 
 export interface AnswerClaim {

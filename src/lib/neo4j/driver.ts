@@ -1,4 +1,4 @@
-import neo4j, { Driver, Session } from 'neo4j-driver';
+import neo4j, { Driver, Session, type Integer } from 'neo4j-driver';
 import { getNeo4jConfig, isNeo4jConfigured } from './config';
 
 let driverInstance: Driver | null = null;
@@ -127,7 +127,7 @@ export async function runCypherQuery<T = Record<string, unknown>>(
  */
 function normalizeNeo4jValue(val: unknown): unknown {
   if (val === null || val === undefined) return val;
-  if (neo4j.isInt(val)) return (val as neo4j.Integer).toNumber();
+  if (neo4j.isInt(val)) return (val as Integer).toNumber();
   if (Array.isArray(val)) return val.map(normalizeNeo4jValue);
   if (typeof val === 'object') {
     // If it's a Neo4j Node or Relationship with properties

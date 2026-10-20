@@ -9,6 +9,8 @@ import {
   ImpactSeverity,
 } from '@/types/impact';
 import { GraphNode } from '@/types/graph';
+import { EvidenceSource } from '@/types/evidence';
+import { mineCoChangeCorrelations, identifyPastRegressions } from '@/lib/impact/heuristics-engine';
 
 /**
  * Executes a Cypher graph traversal in Neo4j to compute pre-change impact analysis.
@@ -47,8 +49,8 @@ export async function analyzeChangeImpactInNeo4j(
     const targetNode: GraphNode = {
       id: targetRow.id,
       label: targetRow.label,
-      type: targetRow.type as any,
-      filePath: targetRow.filePath,
+      type: (targetRow.type as any) || 'file',
+      filePath: targetRow.filePath || '',
       description: targetRow.description,
     };
 
@@ -112,24 +114,33 @@ export async function analyzeChangeImpactInNeo4j(
         ? 'config_consumer'
         : 'transitive_consumer';
 
+      const consumerNode: GraphNode = {
+        id: record.id,
+        label: record.label,
+        type: (record.type as any) || 'file',
+        filePath: record.filePath || '',
+        description: record.description,
+      };
+
       const paths: DependencyPath[] = record.samplePaths.map(p => ({
-        sourceNodeId: record.id,
-        targetNodeId: targetNode.id,
+        nodes: [consumerNode, targetNode],
+        edges: [],
         hops: p.hops,
-        relationshipTypes: p.relationshipTypes as any,
-        evidenceCitations: [
-          `Neo4j Cypher Traversal: ${p.pathNodeLabels.join(' ➔ ')} (${p.hops} ${p.hops === 1 ? 'hop' : 'hops'})`,
-        ],
+        description: `Neo4j Cypher Traversal: ${p.pathNodeLabels.join(' ➔ ')} (${p.hops} ${p.hops === 1 ? 'hop' : 'hops'})`,
       }));
 
-      affectedComponents.push({
-        node: {
-          id: record.id,
-          label: record.label,
-          type: record.type as any,
-          filePath: record.filePath,
-          description: record.description,
+      const edgeEvidence: EvidenceSource[] = [
+        {
+          id: `ev-neo4j-${record.id}`,
+          type: 'ast_relation',
+          title: `Neo4j: ${record.label} depends on ${targetNode.label}`,
+          filePath: record.filePath || '',
+          confidenceScore: 0.95,
         },
+      ];
+
+      affectedComponents.push({
+        node: consumerNode,
         impactKind,
         severity,
         severityReason: isDirect
@@ -137,103 +148,144 @@ export async function analyzeChangeImpactInNeo4j(
           : `Indirectly depends on ${targetNode.label} via ${record.minHops}-hop execution path.`,
         isDirect,
         paths,
-        suggestedActions: isDirect
+        evidence: edgeEvidence,
+        recommendedChecks: isDirect
           ? [`Update call-site signature in ${record.filePath || record.label}`, `Run verification tests`]
           : [`Review transitive contract expectations`],
       });
     }
 
     // Add tests
+    const relatedTests: AffectedComponent[] = [];
     for (const t of testRecords) {
-      if (!affectedComponents.some(a => a.node.id === t.id)) {
-        affectedComponents.push({
-          node: {
-            id: t.id,
-            label: t.label,
-            type: 'test',
-            filePath: t.filePath,
-            description: `Automated test suite asserting ${targetNode.label}`,
-          },
-          impactKind: 'test_suite',
-          severity: 'high',
-          severityReason: `Test suite directly validates ${targetNode.label}; expectations may fail after change.`,
-          isDirect: true,
-          paths: [
-            {
-              sourceNodeId: t.id,
-              targetNodeId: targetNode.id,
-              hops: 1,
-              relationshipTypes: ['tests'],
-              evidenceCitations: [`Neo4j TESTS relationship: ${t.label} ➔ ${targetNode.label}`],
-            },
-          ],
-          suggestedActions: [`Execute test suite before and after PR merge`],
-        });
-      }
+      const testNode: GraphNode = {
+        id: t.id,
+        label: t.label,
+        type: 'test',
+        filePath: t.filePath || '',
+        description: `Automated test suite asserting ${targetNode.label}`,
+      };
+      const testPath: DependencyPath = {
+        nodes: [testNode, targetNode],
+        edges: [],
+        hops: 1,
+        description: `Neo4j TESTS relationship: ${t.label} ➔ ${targetNode.label}`,
+      };
+      const testEvidence: EvidenceSource[] = [
+        {
+          id: `ev-neo4j-test-${t.id}`,
+          type: 'ast_relation',
+          title: `Neo4j TESTS: ${t.label} tests ${targetNode.label}`,
+          filePath: t.filePath || '',
+          confidenceScore: 1.0,
+        },
+      ];
+      relatedTests.push({
+        node: testNode,
+        impactKind: 'test_suite',
+        severity: 'high',
+        severityReason: `Test suite directly validates ${targetNode.label}; expectations may fail after change.`,
+        isDirect: true,
+        paths: [testPath],
+        evidence: testEvidence,
+        recommendedChecks: [`Execute test suite before and after PR merge`],
+      });
     }
+
+    const configReferences = affectedComponents.filter(c => c.impactKind === 'config_consumer');
+    const coChanges = mineCoChangeCorrelations(targetNode.filePath);
+    const pastRegressions = identifyPastRegressions(targetNode.filePath);
 
     // Calculate blast radius breakdown
     const directCount = affectedComponents.filter(c => c.isDirect).length;
     const transitiveCount = affectedComponents.filter(c => !c.isDirect).length;
-    const testCount = affectedComponents.filter(c => c.impactKind === 'test_suite').length;
+    const testCount = relatedTests.length;
+    const allAffected = [...affectedComponents, ...relatedTests];
 
-    const overallRisk =
+    const overallRisk: ImpactSeverity =
       directCount > 3 || changeCategory === 'breaking_interface'
-        ? 'critical'
+        ? 'high'
         : directCount > 0
-        ? 'elevated'
-        : 'moderate';
+        ? 'medium'
+        : 'low';
+
+    const allPaths: DependencyPath[] = [];
+    for (const comp of affectedComponents) {
+      allPaths.push(...comp.paths);
+    }
 
     return {
-      targetNode,
-      request,
-      blastRadius: {
-        directDependencies: directCount,
-        transitiveDependencies: transitiveCount,
-        testSuites: testCount,
-        totalAffected: affectedComponents.length,
+      id: `neo4j-impact-${Date.now()}`,
+      repoId,
+      analyzedAt: new Date().toISOString(),
+      selectedComponent: targetNode,
+      proposedChange: {
+        category: changeCategory,
+        description: proposedChangeDescription || 'Refactoring component contract and behavior',
       },
-      threeWaySeparation: {
-        safeToModifyUnchanged: [
-          'Components outside the computed caller path',
-          'Independent service modules with decoupled interfaces',
-        ],
-        requiresRefactoring: affectedComponents
-          .filter(c => c.isDirect && c.impactKind !== 'test_suite')
-          .map(c => `${c.node.label} (${c.node.filePath || 'codebase'})`),
-        testsNeedingUpdate: affectedComponents
-          .filter(c => c.impactKind === 'test_suite')
-          .map(c => `${c.node.label} (${c.node.filePath || 'test suite'})`),
+      summary: {
+        overview: `Neo4j graph analysis identified ${allAffected.length} potentially affected components across ${directCount} direct consumers, ${transitiveCount} transitive callers, ${testCount} linked test suites, and ${coChanges.length} historical co-change files.`,
+        totalAffected: allAffected.length,
+        directCount,
+        transitiveCount,
+        testCount,
+        configCount: configReferences.length,
+        coChangeCount: coChanges.length,
       },
       affectedComponents,
-      confidenceScores: {
-        astGrounding: 1.0, // 100% verified graph relationships from Neo4j
-        traversalCompleteness: 0.95,
-        riskScore: overallRisk === 'critical' ? 0.88 : overallRisk === 'elevated' ? 0.65 : 0.35,
+      dependencyPaths: allPaths,
+      relatedTests,
+      configReferences,
+      coChangedFiles: coChanges,
+      pastRegressions,
+      potentialRisks: [
+        {
+          risk: `Downstream impact on callers of ${targetNode.label}`,
+          level: overallRisk,
+          rationale: `Neo4j identified ${directCount} direct and ${transitiveCount} transitive callers for ${targetNode.label}.`,
+        },
+      ],
+      manualVerificationAreas: [
+        {
+          area: 'Direct Callers and Type Checking',
+          checklist: [
+            `Verify all ${directCount} direct callers compile without type errors.`,
+            `Check call-sites in affected files: ${affectedComponents.filter(c => c.isDirect).map(c => c.node.label).join(', ') || 'None'}.`,
+          ],
+        },
+        {
+          area: 'Test Verification',
+          checklist: [
+            `Run linked test suites (${testCount} detected) against new behavior.`,
+          ],
+        },
+      ],
+      separation: {
+        staticAnalysis: [
+          `Neo4j Cypher query traced ${directCount} direct incoming relationships.`,
+          `Neo4j Cypher query traced ${transitiveCount} transitive relationships up to depth ${boundedDepth}.`,
+        ],
+        heuristicSuggestions: [
+          `Identified ${testCount} associated test suites in graph.`,
+          `Co-change analysis found ${coChanges.length} correlated files.`,
+        ],
+        aiInterpretations: [
+          `Category '${changeCategory}': changes will impact downstream callers in ${repoId}.`,
+        ],
       },
-      risks: [
-        {
-          severity: overallRisk,
-          description: `Neo4j identified ${directCount} direct and ${transitiveCount} transitive callers for ${targetNode.label}.`,
-          mitigationRecommendation: `Stage changes with feature flags or deprecation warnings before breaking consumers.`,
-        },
+      confidence: {
+        level: 'high',
+        score: 0.95,
+        reasoning: 'Grounded directly in Neo4j persistent knowledge graph relationships and Cypher path traversal.',
+        limitations: [
+          'Dynamic runtime reflection or eval() cannot be captured in the graph.',
+          'External APIs outside repository boundaries are not traced.',
+        ],
+      },
+      limitations: [
+        'Dynamic runtime reflection or eval() cannot be captured in the graph.',
+        'External APIs outside repository boundaries are not traced.',
       ],
-      preFlightChecklist: [
-        {
-          id: 'chk-neo4j-1',
-          task: `Verify all ${directCount} direct callers compile without type errors.`,
-          category: 'code',
-          required: true,
-        },
-        {
-          id: 'chk-neo4j-2',
-          task: `Run linked test suites (${testCount} detected) against new behavior.`,
-          category: 'test',
-          required: testCount > 0,
-        },
-      ],
-      analyzedAt: new Date().toISOString(),
-      neo4jGrounded: true,
     };
   } catch (err) {
     console.error('[Neo4j Impact] Traversal failed:', err);
