@@ -108,12 +108,13 @@ export async function runCypherQuery<T = Record<string, unknown>>(
   try {
     const result = await session.run(cypher, params);
     return result.records.map((rec) => {
-      const obj: Record<string, unknown> = {};
+      const obj =  {} as Record<string, any>;
       for (const key of rec.keys) {
-        const val = rec.get(key);
         // Normalize neo4j Integers to plain numbers if applicable
+        if(typeof key !== 'string')continue;
+        const val = rec.get(key);
         obj[key] = normalizeNeo4jValue(val);
-      }
+        }
       return obj as T;
     });
   } finally {
