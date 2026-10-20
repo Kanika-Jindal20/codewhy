@@ -94,18 +94,29 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [focusedNodeIdx, setFocusedNodeIdx] = useState<number>(-1);
 
-  // Apply filters
-  const visibleNodeSet = new Set(
-    nodes.filter(n => isNodeVisible(n, filters)).map(n => n.id)
-  );
-  const visibleNodes = nodes.filter(n => visibleNodeSet.has(n.id));
-  const visibleEdges = edges.filter(e => isEdgeVisible(e, filters, visibleNodeSet));
+  // Apply filters safely
+const safeNodes = Array.isArray(nodes) ? nodes : [];
+const safeEdges = Array.isArray(edges) ? edges : [];
+
+const visibleNodeSet = new Set(
+  safeNodes
+    .filter(n => isNodeVisible(n, filters))
+    .map(n => n.id)
+);
+
+const visibleNodes = safeNodes.filter(n =>
+  visibleNodeSet.has(n.id)
+);
+
+const visibleEdges = safeEdges.filter(e =>
+  isEdgeVisible(e, filters, visibleNodeSet)
+);
 
   // Reset pan/zoom when nodes change substantially
   useEffect(() => {
     setPan({ x: 0, y: 0 });
     setZoom(1.05);
-  }, [nodes.length]);
+  }, [safeNodes.length]);
 
   // Pan handlers
   const handleMouseDown = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
@@ -176,7 +187,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     );
   }
 
-  if (nodes.length === 0) {
+  if (safeNodes.length === 0) {
     return (
       <div className="flex-1 bg-white rounded-2xl border border-gray-200 flex items-center justify-center min-h-[460px]">
         <div className="text-center text-sm text-gray-500 space-y-2">
@@ -229,7 +240,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       {/* Truncation warning */}
       {truncated && (
         <div className="absolute top-3 left-3 z-10 px-3 py-1.5 bg-amber-50 border border-amber-300 rounded-xl text-xs font-bold text-amber-900 flex items-center gap-2 shadow-sm">
-          <span>⚠️</span> Graph limited to {nodes.length} nodes. Expand nodes to explore further.
+          <span>⚠️</span> Graph limited to {safeNodes.length} nodes. Expand nodes to explore further.
         </div>
       )}
 

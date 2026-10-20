@@ -242,7 +242,10 @@ export const EntityDetailPanel: React.FC<EntityDetailPanelProps> = ({
   }
 
   const color = NODE_TYPE_COLORS[node.type];
-  const nodeEdges = edges.filter(e => e.sourceId === node.id || e.targetId === node.id);
+  const safeEdges = Array.isArray(edges) ? edges : [];
+const nodeEdges = safeEdges.filter(
+  e => e.sourceId === node.id || e.targetId === node.id
+);
   const commitEvidence = node.evidence?.filter(ev => ev.type === 'commit') ?? [];
   const hasEvidence = (node.evidence?.length ?? 0) > 0;
 

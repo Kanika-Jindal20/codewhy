@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Network, Table } from 'lucide-react';
+import { Network, Table, RefreshCw, AlertCircle } from 'lucide-react';
 import { GraphNode } from '@/types/graph';
 import {
   VisNode, VisEdge, FilterState, ExplorerView, BreadcrumbEntry,
 } from '@/types/architecture';
 import { GraphQueryResult } from '@/types/architecture';
-import { computeLayout, mergeIntoVisGraph } from '@/lib/graph/layout-engine';
+import { computeLayout, buildVisEdges, mergeIntoVisGraph } from '@/lib/graph/layout-engine';
 import { GraphCanvas } from '@/components/architecture/GraphCanvas';
 import { EntityDetailPanel } from '@/components/architecture/EntityDetailPanel';
 import { GraphSearchBar } from '@/components/architecture/GraphSearchBar';
@@ -15,7 +15,7 @@ import { GraphFilters } from '@/components/architecture/GraphFilters';
 import { GraphAccessibleTable } from '@/components/architecture/GraphAccessibleTable';
 import { NavigationBreadcrumb } from '@/components/architecture/NavigationBreadcrumb';
 import { GraphLegend } from '@/components/architecture/GraphLegend';
-import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 
 // Canvas dimensions used for layout computation (matches typical viewport)
 const CANVAS_W = 860;
@@ -42,7 +42,7 @@ export const KnowledgeGraphClient: React.FC<KnowledgeGraphClientProps> = ({
   const [rawNodes, setRawNodes] = useState<GraphNode[]>([]);
 
   // UI state
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(suggestedSeedNodeId);
   const [viewMode, setViewMode] = useState<ExplorerView>('graph');
   const [filters, setFilters] = useState<FilterState>({ nodeTypes: new Set(), edgeTypes: new Set() });
   const [navigationTrail, setNavigationTrail] = useState<BreadcrumbEntry[]>([]);
@@ -60,33 +60,47 @@ export const KnowledgeGraphClient: React.FC<KnowledgeGraphClientProps> = ({
     try {
       const url = `/api/graph?repoId=${encodeURIComponent(repoId)}&nodeId=${encodeURIComponent(nodeId)}&hops=1&limit=40`;
       const res = await fetch(url);
-      if (!res.ok) throw new Error(`Graph query failed: ${res.status}`);
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || `Graph query failed: ${res.status}`);
+      }
       const data: GraphQueryResult = await res.json();
 
-      setTruncated(data.truncated);
+      setTruncated(Boolean(data.truncated));
 
       if (merge) {
-        setVisNodes(prev => {
+        const safeNewNodes = data.nodes || [];
+        const safeNewEdges = data.edges || [];
+        setVisNodes(prevNodes => {
           setVisEdges(prevEdges => {
-            const { nodes: mn, edges: me } = mergeIntoVisGraph(
-              prev, prevEdges, data.nodes, data.edges, CANVAS_W, CANVAS_H
+            const { edges: me } = mergeIntoVisGraph(
+              prevNodes, prevEdges, safeNewNodes, safeNewEdges, CANVAS_W, CANVAS_H
             );
-            setVisNodes(mn);
-            setVisEdges(me);
             return me;
           });
-          return prev;
+          const { nodes: mn } = mergeIntoVisGraph(
+            prevNodes, [], safeNewNodes, safeNewEdges, CANVAS_W, CANVAS_H
+          );
+          return mn;
         });
         setRawNodes(prev => {
           const map = new Map(prev.map(n => [n.id, n]));
-          for (const n of data.nodes) map.set(n.id, n);
+          for (const n of safeNewNodes) map.set(n.id, n);
           return Array.from(map.values());
         });
       } else {
-        const { nodes: ln, edges: le } = computeLayout(data.nodes, data.edges, CANVAS_W, CANVAS_H);
-        setVisNodes(ln);
-        setVisEdges(le);
-        setRawNodes(data.nodes);
+        const safeDataNodes = data.nodes || [];
+        const safeDataEdges = data.edges || [];
+        const layoutedNodes = computeLayout(safeDataNodes, safeDataEdges, CANVAS_W, CANVAS_H);
+        const layoutedEdges = buildVisEdges(safeDataEdges, layoutedNodes);
+        setVisNodes(layoutedNodes);
+        setVisEdges(layoutedEdges);
+        setRawNodes(safeDataNodes);
+        if (safeDataNodes.length > 0) {
+          setSelectedNodeId(current =>
+            current && safeDataNodes.some(n => n.id === current) ? current : safeDataNodes[0].id
+          );
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load graph data');
@@ -99,8 +113,8 @@ export const KnowledgeGraphClient: React.FC<KnowledgeGraphClientProps> = ({
   // Initial load
   // ---------------------------------------------------------------------------
   useEffect(() => {
+    fetchNeighborhood(suggestedSeedNodeId || '', false);
     if (suggestedSeedNodeId) {
-      fetchNeighborhood(suggestedSeedNodeId, false);
       setSelectedNodeId(suggestedSeedNodeId);
     }
   }, [suggestedSeedNodeId, fetchNeighborhood]);
@@ -160,7 +174,7 @@ export const KnowledgeGraphClient: React.FC<KnowledgeGraphClientProps> = ({
   }, [fetchNeighborhood]);
 
   // Derived: selected GraphNode
-  const selectedNode = selectedNodeId ? rawNodes.find(n => n.id === selectedNodeId) ?? null : null;
+  const selectedNode = selectedNodeId ? rawNodes.find(n => n.id === selectedNodeId) ?? null : (rawNodes[0] || null);
 
   return (
     <div className="flex flex-col gap-5 h-full min-h-[calc(100vh-8rem)] font-['Inter',sans-serif]">
@@ -254,7 +268,7 @@ export const KnowledgeGraphClient: React.FC<KnowledgeGraphClientProps> = ({
             onNavigate={handleBreadcrumbNavigate}
             onReset={() => {
               setNavigationTrail([]);
-              if (suggestedSeedNodeId) fetchNeighborhood(suggestedSeedNodeId, false);
+              fetchNeighborhood(suggestedSeedNodeId || '', false);
             }}
           />
         )}
@@ -275,10 +289,7 @@ export const KnowledgeGraphClient: React.FC<KnowledgeGraphClientProps> = ({
               filters={filters}
               isLoading={isLoading}
               error={error}
-              onRetry={() => {
-                if (selectedNodeId) fetchNeighborhood(selectedNodeId, false);
-                else if (suggestedSeedNodeId) fetchNeighborhood(suggestedSeedNodeId, false);
-              }}
+              truncated={truncated}
             />
 
             {truncated && (
@@ -294,8 +305,8 @@ export const KnowledgeGraphClient: React.FC<KnowledgeGraphClientProps> = ({
               edges={visEdges}
               allNodes={rawNodes}
               repoId={repoId}
+              onExpandNeighborhood={handleExpandNode}
               onNavigateToNode={handleNavigateToNode}
-              onClose={() => setSelectedNodeId(null)}
             />
           </div>
         </div>

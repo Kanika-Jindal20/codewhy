@@ -1,5 +1,5 @@
 import { EngineeringDecisionReport } from '@/types/report';
-import { SAMPLE_REPO_ECOMMERCE } from '@/lib/graph/graph-store';
+import { SAMPLE_REPO_ECOMMERCE } from '@/lib/graph/sample-repo';
 
 /**
  * High-fidelity, real-world sample engineering decision report based on
