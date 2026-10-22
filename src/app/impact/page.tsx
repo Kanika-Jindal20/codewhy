@@ -108,7 +108,7 @@ export default function ImpactAnalysisPage() {
         body: JSON.stringify({
           title: `Pre-Change Impact: ${analysisResult.selectedComponent.label} (${analysisResult.proposedChange.category})`,
           repoId: analysisResult.repoId,
-          repoName: 'acme/commerce-core',
+          repoName: activeRepoName,
           originalQuestion: `What is the blast radius and architectural risk of ${analysisResult.proposedChange.description}?`,
           initialAnswerSummary: `Evaluated ${analysisResult.summary.totalAffected} downstream components (${analysisResult.summary.directCount} direct, ${analysisResult.summary.transitiveCount} transitive).`,
           detailedFindings: analysisResult.potentialRisks.map(r => `${r.risk}: ${r.rationale}`),
@@ -140,7 +140,7 @@ export default function ImpactAnalysisPage() {
       version: '1.0.0',
       repository: {
         repoId: analysisResult.repoId,
-        repoName: 'acme/commerce-core',
+        repoName: activeRepoName,
         repoUrl: 'https://github.com/acme/commerce-core',
         analyzedCommit: '7a8f9c2d1b',
         analyzedBranch: 'main',
@@ -216,19 +216,9 @@ export default function ImpactAnalysisPage() {
       const data: ImpactAnalysisResult = await res.json();
       setAnalysisResult(data);
     } catch (err: any) {
-      console.warn('API fetch fallback to direct service:', err);
-      try {
-        const fallback = analyzeChangeImpact(SAMPLE_REPO_ECOMMERCE, {
-          repoId: activeRepoId,
-          targetNodeId: selectedNode.id,
-          changeCategory,
-          proposedChangeDescription: changeDescription,
-          maxTransitiveDepth: maxDepth,
-        });
-        setAnalysisResult(fallback);
-      } catch (fallbackErr: any) {
-        setError(fallbackErr.message || 'Error executing impact calculation.');
-      }
+      console.error('Impact calculation error:', err);
+      setError(err.message || 'Failed to compute impact analysis.');
+      setAnalysisResult(null);
     } finally {
       setIsLoading(false);
     }

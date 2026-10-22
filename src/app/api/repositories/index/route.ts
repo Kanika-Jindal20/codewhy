@@ -4,7 +4,7 @@ import {
   registerRepositoryGraph,
   SAMPLE_REPO_ECOMMERCE,
 } from '@/lib/graph/graph-store';
-import { parseSourceFilesToGraph, SourceFileInput } from '@/lib/neo4j/code-parser';
+import { parseSourceFilesToGraph, SourceFileInput, CommitInput } from '@/lib/neo4j/code-parser';
 import { saveGraphToNeo4j } from '@/lib/neo4j/neo4j-graph-service';
 import { isNeo4jConfigured } from '@/lib/neo4j/config';
 import { verifyNeo4jConnection } from '@/lib/neo4j/driver';
@@ -12,41 +12,65 @@ import {
   lookupPublicGitHubRepository,
   fetchGitHubRepositorySourceFiles,
   scanLocalWorkspaceFiles,
+  scanLocalGitCommits,
 } from '@/lib/repositories/github';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { repoId, repoName, url, branch, files, isLocal = false, useSample = false } = body;
+    const {
+      repoId,
+      repoName,
+      url,
+      branch = 'main',
+      files,
+      token,
+      isLocal = false,
+      useSample = false,
+    } = body;
+
+    const authToken = token || req.headers.get('x-github-token') || undefined;
 
     let targetRepoId = repoId;
     let targetRepoName = repoName;
+    let targetBranch = branch;
+    let commitSha: string | undefined;
     let sourceFiles: SourceFileInput[] = [];
-    let commits: Array<{ hash: string; message: string; author: string; timestamp: string }> = [];
+    let commits: CommitInput[] = [];
+    let totalFilesDiscovered = 0;
 
     // 1. If a GitHub URL is provided, fetch real source files and commit history
     if (url && typeof url === 'string' && url.includes('github.com')) {
-      const meta = await lookupPublicGitHubRepository(url.trim());
+      const meta = await lookupPublicGitHubRepository(url.trim(), authToken);
       targetRepoId = targetRepoId || `repo-${meta.owner}-${meta.name}`.toLowerCase();
       targetRepoName = targetRepoName || `${meta.owner}/${meta.name}`;
+      targetBranch = branch || meta.defaultBranch;
 
       const fetched = await fetchGitHubRepositorySourceFiles(
         meta.owner,
         meta.name,
-        branch || meta.defaultBranch
+        targetBranch,
+        50,
+        authToken
       );
       sourceFiles = fetched.files;
       commits = fetched.commits;
+      commitSha = fetched.commitSha;
+      totalFilesDiscovered = fetched.totalFilesDiscovered;
     } else if (isLocal || url === 'local' || repoId === 'local' || repoId === 'codewhy') {
       // 2. Scan local codebase directly from workspace
       targetRepoId = 'repo-codewhy';
       targetRepoName = 'codewhy';
-      sourceFiles = scanLocalWorkspaceFiles(50);
+      sourceFiles = scanLocalWorkspaceFiles(60);
+      totalFilesDiscovered = sourceFiles.length;
+      commits = scanLocalGitCommits(10);
+      commitSha = commits[0]?.hash;
     } else if (Array.isArray(files) && files.length > 0) {
       // 3. User supplied direct file contents
       sourceFiles = files;
       targetRepoId = targetRepoId || 'repo-custom';
       targetRepoName = targetRepoName || 'custom-repository';
+      totalFilesDiscovered = files.length;
     }
 
     let graphToSave = targetRepoId ? getRepositoryGraph(targetRepoId) : undefined;
@@ -56,7 +80,9 @@ export async function POST(req: NextRequest) {
         targetRepoId!,
         targetRepoName!,
         sourceFiles,
-        commits
+        commits,
+        targetBranch,
+        commitSha
       );
       registerRepositoryGraph(graphToSave);
     } else if (useSample || !graphToSave) {
@@ -79,43 +105,59 @@ export async function POST(req: NextRequest) {
     if (neo4jConnected) {
       const saveResult = await saveGraphToNeo4j(graphToSave!);
       if (!saveResult.success) {
-        return NextResponse.json({
-          success: false,
-          neo4jConnected: true,
-          error: saveResult.error || 'Failed to save graph to Neo4j.',
-        }, { status: 500 });
+        return NextResponse.json(
+          {
+            success: false,
+            neo4jConnected: true,
+            error: saveResult.error || 'Failed to save graph to Neo4j.',
+          },
+          { status: 500 }
+        );
       }
 
-      return NextResponse.json({
-        success: true,
-        neo4jConnected: true,
-        repoId: graphToSave!.repoId,
-        repoName: graphToSave!.repoName,
-        nodesIndexed: saveResult.nodesIndexed,
-        edgesIndexed: saveResult.edgesIndexed,
-        message: `Repository '${graphToSave!.repoName}' successfully parsed and indexed into Neo4j graph database.`,
-      }, { status: 200 });
+      return NextResponse.json(
+        {
+          success: true,
+          neo4jConnected: true,
+          repoId: graphToSave!.repoId,
+          repoName: graphToSave!.repoName,
+          branch: graphToSave!.branch || targetBranch,
+          commitSha: graphToSave!.commitSha,
+          nodesIndexed: saveResult.nodesIndexed,
+          edgesIndexed: saveResult.edgesIndexed,
+          filesDiscovered: totalFilesDiscovered,
+          filesIndexed: sourceFiles.length,
+          message: `Repository '${graphToSave!.repoName}' successfully parsed and indexed into Neo4j graph database (${saveResult.nodesIndexed} nodes, ${saveResult.edgesIndexed} relationships).`,
+        },
+        { status: 200 }
+      );
     }
 
-    // If Neo4j is not connected, repository is still saved locally and functional
-    return NextResponse.json({
-      success: true,
-      neo4jConnected: false,
-      repoId: graphToSave!.repoId,
-      repoName: graphToSave!.repoName,
-      nodesIndexed: graphToSave!.nodes.length,
-      edgesIndexed: graphToSave!.edges.length,
-      message: `Repository '${graphToSave!.repoName}' parsed and indexed in local persistent storage (${graphToSave!.nodes.length} nodes, ${graphToSave!.edges.length} relationships).`,
-      neo4jHelp: neo4jError || 'Neo4j is not configured. Add NEO4J_URI, NEO4J_USERNAME, and NEO4J_PASSWORD in .env to enable graph database persistence.',
-    }, { status: 200 });
-
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    console.error('[/api/repositories/index] Indexing failed:', message);
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to index repository.',
-      details: message,
-    }, { status: 500 });
+    // If Neo4j is not connected, repository is still saved locally and functional in CodeWhy's local AST engine
+    return NextResponse.json(
+      {
+        success: true,
+        neo4jConnected: false,
+        repoId: graphToSave!.repoId,
+        repoName: graphToSave!.repoName,
+        branch: graphToSave!.branch || targetBranch,
+        commitSha: graphToSave!.commitSha,
+        nodesIndexed: graphToSave!.nodes.length,
+        edgesIndexed: graphToSave!.edges.length,
+        filesDiscovered: totalFilesDiscovered,
+        filesIndexed: sourceFiles.length,
+        message: `Repository '${graphToSave!.repoName}' parsed and indexed in local AST engine (${graphToSave!.nodes.length} nodes, ${graphToSave!.edges.length} relationships). Set NEO4J_URI in .env to sync with Neo4j.`,
+      },
+      { status: 200 }
+    );
+  } catch (error: any) {
+    console.error('[/api/repositories/index] Indexing error:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message || 'An error occurred while parsing and indexing the repository.',
+      },
+      { status: 500 }
+    );
   }
 }

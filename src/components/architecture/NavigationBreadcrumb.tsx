@@ -1,18 +1,20 @@
 'use client';
 
 import React from 'react';
-import { ChevronRight, Home } from 'lucide-react';
+import { ChevronRight, Home, RotateCcw } from 'lucide-react';
 import { BreadcrumbEntry } from '@/types/architecture';
 import { NODE_TYPE_COLORS } from '@/types/architecture';
 
 interface NavigationBreadcrumbProps {
   trail: BreadcrumbEntry[];
   onNavigate: (entry: BreadcrumbEntry, index: number) => void;
+  onReset?: () => void;
 }
 
 export const NavigationBreadcrumb: React.FC<NavigationBreadcrumbProps> = ({
   trail,
   onNavigate,
+  onReset,
 }) => {
   if (trail.length === 0) {
     return (
@@ -31,9 +33,14 @@ export const NavigationBreadcrumb: React.FC<NavigationBreadcrumbProps> = ({
       aria-label="Architecture navigation trail"
       className="flex items-center gap-0.5 text-xs overflow-x-auto max-w-full"
     >
-      <span className="flex items-center shrink-0 text-text-muted pr-1">
+      <button
+        onClick={onReset}
+        disabled={!onReset}
+        className={`flex items-center shrink-0 pr-1 transition-colors ${onReset ? 'text-text-muted hover:text-blue-600 cursor-pointer' : 'text-text-muted'}`}
+        title="Reset navigation trail"
+      >
         <Home className="w-3 h-3" aria-hidden />
-      </span>
+      </button>
 
       {trail.map((entry, idx) => {
         const isLast = idx === trail.length - 1;
@@ -55,7 +62,7 @@ export const NavigationBreadcrumb: React.FC<NavigationBreadcrumbProps> = ({
               aria-current={isLast ? 'page' : undefined}
             >
               <span
-                className="w-2 h-2 rounded-full shrink-0"
+                className="w-2.5 h-2.5 rounded-full shrink-0"
                 style={{ backgroundColor: color }}
                 aria-hidden
               />

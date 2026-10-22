@@ -6,6 +6,8 @@ export type AskQuestionKind =
   | 'dependency'
   | 'decision_history'
   | 'change_impact'
+  | 'architecture_inquiry'
+  | 'general_investigation'
   | 'why'
   | 'unsupported';
 

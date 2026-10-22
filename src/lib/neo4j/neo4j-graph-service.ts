@@ -383,6 +383,9 @@ function mapEdgeTypeToCypherRel(edgeType: EdgeType | string): string {
     case 'configures': return RELATIONSHIP_TYPES.CONFIGURES;
     case 'co_changed': return RELATIONSHIP_TYPES.CO_CHANGED;
     case 'supersedes': return RELATIONSHIP_TYPES.SUPERSEDES;
+    case 'defines': return RELATIONSHIP_TYPES.DEFINES;
+    case 'depends_on': return RELATIONSHIP_TYPES.DEPENDS_ON;
+    case 'modifies': return RELATIONSHIP_TYPES.MODIFIES;
     default: return RELATIONSHIP_TYPES.DEPENDS_ON;
   }
 }

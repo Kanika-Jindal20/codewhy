@@ -1,7 +1,7 @@
 import React from 'react';
 import { NodeType, EdgeType } from '@/types/graph';
 import { NODE_TYPE_COLORS, NODE_TYPE_LABELS, EDGE_TYPE_LABELS } from '@/types/architecture';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, X } from 'lucide-react';
 
 // Edge style configuration
 const EDGE_STYLES: Record<EdgeType, { color: string; dash?: string; label: string }> = {
@@ -13,6 +13,9 @@ const EDGE_STYLES: Record<EdgeType, { color: string; dash?: string; label: strin
   configures: { color: '#64748B', dash: '2,3', label: EDGE_TYPE_LABELS.configures },
   co_changed: { color: '#EF4444', dash: '4,3', label: EDGE_TYPE_LABELS.co_changed },
   supersedes: { color: '#EF4444', dash: '2,4', label: EDGE_TYPE_LABELS.supersedes },
+  defines:    { color: '#0EA5E9', label: EDGE_TYPE_LABELS.defines },
+  depends_on: { color: '#6366F1', label: EDGE_TYPE_LABELS.depends_on },
+  modifies:   { color: '#EC4899', dash: '3,2', label: EDGE_TYPE_LABELS.modifies },
 };
 
 const ALL_NODE_TYPES = Object.keys(NODE_TYPE_COLORS) as NodeType[];
@@ -20,21 +23,33 @@ const ALL_EDGE_TYPES = Object.keys(EDGE_STYLES) as EdgeType[];
 
 interface GraphLegendProps {
   className?: string;
+  onClose?: () => void;
 }
 
-export const GraphLegend: React.FC<GraphLegendProps> = ({ className = '' }) => {
+export const GraphLegend: React.FC<GraphLegendProps> = ({ className = '', onClose }) => {
   return (
     <div
       className={`bg-white border border-blue-100 rounded-2xl p-5 shadow-lg ${className}`}
       aria-label="Graph legend"
     >
-      <div className="flex items-center gap-2 mb-3 pb-2.5 border-b border-gray-100">
-        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
-          <BookOpen className="w-3.5 h-3.5" />
-        </span>
-        <span className="text-xs font-extrabold uppercase tracking-wider text-blue-900">
-          Graph Legend & Symbols
-        </span>
+      <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-gray-100">
+        <div className="flex items-center gap-2">
+          <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
+            <BookOpen className="w-3.5 h-3.5" />
+          </span>
+          <span className="text-xs font-extrabold uppercase tracking-wider text-blue-900">
+            Graph Legend &amp; Symbols
+          </span>
+        </div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            aria-label="Close legend"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

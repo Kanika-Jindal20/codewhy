@@ -17,6 +17,9 @@ const EDGE_STROKE: Record<EdgeType, { color: string; dash?: string }> = {
   configures: { color: '#64748B', dash: '3,3' },
   co_changed: { color: '#EF4444', dash: '4,3' },
   supersedes: { color: '#EF4444', dash: '2,4' },
+  defines:    { color: '#0EA5E9' },
+  depends_on: { color: '#6366F1' },
+  modifies:   { color: '#EC4899', dash: '3,2' },
 };
 
 const NODE_RADIUS = 26;

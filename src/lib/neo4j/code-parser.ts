@@ -6,17 +6,28 @@ export interface SourceFileInput {
   content: string;
 }
 
+export interface CommitInput {
+  hash: string;
+  message: string;
+  author: string;
+  timestamp: string;
+  filesChanged?: string[];
+}
+
 /**
- * Parses real JavaScript and TypeScript source files into a KnowledgeGraph model.
+ * Parses real JavaScript, TypeScript, Python, and Go source files into a KnowledgeGraph model.
  * Extracts:
- * - Files, Modules, Functions, Classes, Tests, and Configurations
- * - IMPORTS, CALLS, CONTAINS, TESTS, and CONFIGURES relationships
+ * - Files, Modules, Functions, Classes, Methods, Tests, and Configurations
+ * - IMPORTS, CALLS, DEFINES, EXTENDS, TESTS, CONFIGURES, and MODIFIES relationships
+ * - Exact line numbers, AST signatures, docstrings, and commit metadata
  */
 export function parseSourceFilesToGraph(
   repoId: string,
   repoName: string,
   files: SourceFileInput[],
-  commits?: Array<{ hash: string; message: string; author: string; timestamp: string }>
+  commits?: CommitInput[],
+  branch: string = 'main',
+  commitSha?: string
 ): KnowledgeGraph {
   const nodes: GraphNode[] = [];
   const edges: GraphEdge[] = [];
@@ -24,6 +35,7 @@ export function parseSourceFilesToGraph(
   const fileNodeMap = new Map<string, GraphNode>();
   const functionNodeMap = new Map<string, GraphNode>();
   const classNodeMap = new Map<string, GraphNode>();
+  const symbolLookup = new Map<string, GraphNode>();
 
   let idCounter = 1;
   const generateId = (prefix: string) => `node-${prefix}-${idCounter++}`;
@@ -49,12 +61,33 @@ export function parseSourceFilesToGraph(
     return resolved.join('/');
   };
 
+  // Language counter
+  const langCounts: Record<string, number> = {};
+
   // 1. Process files first
   for (const file of files) {
     const normPath = normalizePath(file.filePath);
     const fileName = normPath.split('/').pop() || normPath;
-    const isTest = /\.(test|spec)\.(ts|js|tsx|jsx)$/i.test(fileName) || normPath.includes('/tests/') || normPath.includes('/__tests__/');
-    const isConfig = /(config|\.json$|\.rc$)/i.test(fileName);
+    const isTest =
+      /\.(test|spec)\.(ts|js|tsx|jsx|py|go)$/i.test(fileName) ||
+      normPath.includes('/tests/') ||
+      normPath.includes('/test/') ||
+      normPath.includes('/__tests__/') ||
+      fileName.startsWith('test_') ||
+      fileName.endsWith('_test.go');
+
+    const isConfig =
+      /(config|\.json$|\.rc$|\.ya?ml$|\.toml$|dockerfile)/i.test(fileName) &&
+      !isTest;
+
+    let detectedLang = 'text';
+    if (/\.(ts|tsx)$/i.test(fileName)) detectedLang = 'typescript';
+    else if (/\.(js|jsx|mjs|cjs)$/i.test(fileName)) detectedLang = 'javascript';
+    else if (/\.py$/i.test(fileName)) detectedLang = 'python';
+    else if (/\.go$/i.test(fileName)) detectedLang = 'go';
+    else if (/\.(json|yaml|yml|toml)$/i.test(fileName)) detectedLang = 'config';
+
+    langCounts[detectedLang] = (langCounts[detectedLang] || 0) + 1;
 
     let type: NodeType = 'file';
     if (isTest) type = 'test';
@@ -73,7 +106,7 @@ export function parseSourceFilesToGraph(
         ? `Configuration specification in ${normPath}`
         : `Source module in ${normPath}`,
       metadata: {
-        language: normPath.endsWith('.ts') || normPath.endsWith('.tsx') ? 'typescript' : 'javascript',
+        language: detectedLang,
         loc: lines,
       },
       evidence: [
@@ -107,16 +140,6 @@ export function parseSourceFilesToGraph(
 
     nodes.push(fileNode);
     fileNodeMap.set(normPath, fileNode);
-
-    // If it's a test file, link it to the assumed source file
-    if (isTest) {
-      const suspectedSource = normPath
-        .replace(/\.(test|spec)\./, '.')
-        .replace('tests/', 'src/')
-        .replace('__tests__/', '');
-
-      // We will link after all files are registered
-    }
   }
 
   // 2. Parse AST of each JS/TS file using TypeScript compiler API
@@ -125,9 +148,16 @@ export function parseSourceFilesToGraph(
     const fileNode = fileNodeMap.get(normPath);
     if (!fileNode) continue;
 
-    // Skip non-code files from deep AST parsing
-    if (!/\.(ts|tsx|js|jsx)$/i.test(normPath)) continue;
+    if (/\.(ts|tsx|js|jsx)$/i.test(normPath)) {
+      parseTypeScriptFile(file, normPath, fileNode);
+    } else if (/\.py$/i.test(normPath)) {
+      parsePythonFile(file, normPath, fileNode);
+    } else if (/\.go$/i.test(normPath)) {
+      parseGoFile(file, normPath, fileNode);
+    }
+  }
 
+  function parseTypeScriptFile(file: SourceFileInput, normPath: string, fileNode: GraphNode) {
     let sourceFile: ts.SourceFile;
     try {
       sourceFile = ts.createSourceFile(
@@ -137,27 +167,36 @@ export function parseSourceFilesToGraph(
         true
       );
     } catch {
-      // If parsing fails, preserve file node and continue
-      continue;
+      return;
     }
 
     const functionsInThisFile: Array<{ name: string; node: GraphNode; tsNode: ts.Node }> = [];
-
-    // Helper to find line number from position
     const getLine = (pos: number) => sourceFile.getLineAndCharacterOfPosition(pos).line + 1;
 
-    // Recursive AST visitor
+    // Helper to extract doc comment if present
+    const getDocComment = (node: ts.Node): string | undefined => {
+      try {
+        const fullText = sourceFile.getFullText();
+        const ranges = ts.getLeadingCommentRanges(fullText, node.getFullStart());
+        if (ranges && ranges.length > 0) {
+          const comment = fullText.slice(ranges[0].pos, ranges[0].end).trim();
+          return comment.replace(/^\/\*\*?|\*\/$/g, '').replace(/^\s*\* ?/gm, '').trim();
+        }
+      } catch {
+        // ignore
+      }
+      return undefined;
+    };
+
     function visit(node: ts.Node) {
       // A. Imports detection
       if (ts.isImportDeclaration(node)) {
         if (ts.isStringLiteral(node.moduleSpecifier)) {
           const importSpec = node.moduleSpecifier.text;
-          // Resolve relative import to known files
           let targetPath = '';
           if (importSpec.startsWith('.')) {
             const currentDir = normPath.split('/').slice(0, -1).join('/');
             const resolved = normalizePath(`${currentDir}/${importSpec}`);
-            // match with extensions
             for (const ext of ['', '.ts', '.tsx', '.js', '.jsx', '/index.ts', '/index.js']) {
               if (fileNodeMap.has(resolved + ext)) {
                 targetPath = resolved + ext;
@@ -170,13 +209,13 @@ export function parseSourceFilesToGraph(
           if (targetFile) {
             edges.push({
               id: generateEdgeId('import'),
-              source: fileNode!.id,
+              source: fileNode.id,
               target: targetFile.id,
               type: 'imports',
               label: `imports ${importSpec}`,
               evidence: [
                 {
-                  id: `ev-imp-${fileNode!.id}-${targetFile.id}`,
+                  id: `ev-imp-${fileNode.id}-${targetFile.id}`,
                   type: 'ast_relation',
                   title: `Import statement in ${normPath}`,
                   filePath: normPath,
@@ -191,7 +230,7 @@ export function parseSourceFilesToGraph(
         }
       }
 
-      // B. Function declarations
+      // B. Function declarations & Arrow functions
       if (
         ts.isFunctionDeclaration(node) ||
         (ts.isVariableDeclaration(node) &&
@@ -201,15 +240,24 @@ export function parseSourceFilesToGraph(
         const name = node.name && ts.isIdentifier(node.name) ? node.name.text : null;
         if (name && name !== 'anonymous') {
           const startLine = getLine(node.getStart());
+          const isExported = Boolean(
+            (ts.isFunctionDeclaration(node) && node.modifiers?.some((m: ts.ModifierLike) => m.kind === ts.SyntaxKind.ExportKeyword)) ||
+            (node.parent && node.parent.parent && ts.isVariableStatement(node.parent.parent) &&
+              node.parent.parent.modifiers?.some((m: ts.ModifierLike) => m.kind === ts.SyntaxKind.ExportKeyword))
+          );
+          const doc = getDocComment(node);
+
           const funcNode: GraphNode = {
             id: generateId('func'),
             label: `${name}()`,
             type: 'function',
             filePath: normPath,
             line: startLine,
-            description: `Function ${name} declared in ${normPath}:${startLine}`,
+            description: doc || `Function ${name} declared in ${normPath}:${startLine}`,
             metadata: {
               language: 'typescript',
+              isExported,
+              signature: `${name}()`,
             },
             evidence: [
               {
@@ -227,14 +275,22 @@ export function parseSourceFilesToGraph(
 
           nodes.push(funcNode);
           functionNodeMap.set(`${normPath}#${name}`, funcNode);
+          symbolLookup.set(name, funcNode);
           functionsInThisFile.push({ name, node: funcNode, tsNode: node });
 
-          // Edge: File CONTAINS Function
+          // File DEFINES / CONTAINS Function
           edges.push({
             id: generateEdgeId('contains'),
-            source: fileNode!.id,
+            source: fileNode.id,
             target: funcNode.id,
-            type: 'calls', // code architecture relation
+            type: 'calls',
+            label: 'defines',
+          });
+          edges.push({
+            id: generateEdgeId('defines'),
+            source: fileNode.id,
+            target: funcNode.id,
+            type: 'defines',
             label: 'defines',
           });
         }
@@ -244,15 +300,19 @@ export function parseSourceFilesToGraph(
       if (ts.isClassDeclaration(node) && node.name) {
         const className = node.name.text;
         const startLine = getLine(node.getStart());
+        const isExported = Boolean(node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword));
+        const doc = getDocComment(node);
+
         const classNode: GraphNode = {
           id: generateId('class'),
           label: className,
           type: 'class',
           filePath: normPath,
           line: startLine,
-          description: `Class ${className} in ${normPath}:${startLine}`,
+          description: doc || `Class ${className} in ${normPath}:${startLine}`,
           metadata: {
             language: 'typescript',
+            isExported,
           },
           evidence: [
             {
@@ -270,15 +330,64 @@ export function parseSourceFilesToGraph(
 
         nodes.push(classNode);
         classNodeMap.set(`${normPath}#${className}`, classNode);
+        symbolLookup.set(className, classNode);
 
-        // Edge: File defines Class
+        // Edge: File extends/defines Class (maintaining 'extends' for backward-compatibility with vitest)
         edges.push({
-          id: generateEdgeId('contains'),
-          source: fileNode!.id,
+          id: generateEdgeId('extends'),
+          source: fileNode.id,
           target: classNode.id,
           type: 'extends',
           label: 'defines',
         });
+        edges.push({
+          id: generateEdgeId('defines'),
+          source: fileNode.id,
+          target: classNode.id,
+          type: 'defines',
+          label: 'defines',
+        });
+
+        // Scan methods inside class
+        for (const member of node.members) {
+          if (ts.isMethodDeclaration(member) && member.name && ts.isIdentifier(member.name)) {
+            const methodName = member.name.text;
+            const mStart = getLine(member.getStart());
+            const methodNode: GraphNode = {
+              id: generateId('func'),
+              label: `${className}.${methodName}()`,
+              type: 'function',
+              filePath: normPath,
+              line: mStart,
+              description: `Method ${methodName} on ${className}`,
+              metadata: {
+                language: 'typescript',
+                signature: `${className}.${methodName}()`,
+              },
+            };
+            nodes.push(methodNode);
+            functionNodeMap.set(`${normPath}#${methodName}`, methodNode);
+            functionNodeMap.set(`${normPath}#${className}.${methodName}`, methodNode);
+            symbolLookup.set(`${className}.${methodName}`, methodNode);
+            functionsInThisFile.push({ name: methodName, node: methodNode, tsNode: member });
+
+            // Class defines method
+            edges.push({
+              id: generateEdgeId('class-method'),
+              source: classNode.id,
+              target: methodNode.id,
+              type: 'calls',
+              label: 'defines',
+            });
+            edges.push({
+              id: generateEdgeId('defines'),
+              source: classNode.id,
+              target: methodNode.id,
+              type: 'defines',
+              label: 'defines',
+            });
+          }
+        }
       }
 
       ts.forEachChild(node, visit);
@@ -286,9 +395,9 @@ export function parseSourceFilesToGraph(
 
     visit(sourceFile);
 
-    // D. Second pass for function call expressions inside functions
+    // Call expressions inside functions
     for (const caller of functionsInThisFile) {
-      function visitCallExpressions(n: ts.Node) {
+      function visitCalls(n: ts.Node) {
         if (ts.isCallExpression(n)) {
           let calledName: string | null = null;
           if (ts.isIdentifier(n.expression)) {
@@ -298,8 +407,10 @@ export function parseSourceFilesToGraph(
           }
 
           if (calledName && calledName !== caller.name) {
-            // Check if called function is declared in same file or known files
-            const targetFunc = functionNodeMap.get(`${normPath}#${calledName}`);
+            const targetFunc =
+              functionNodeMap.get(`${normPath}#${calledName}`) ||
+              symbolLookup.get(calledName);
+
             if (targetFunc && targetFunc.id !== caller.node.id) {
               edges.push({
                 id: generateEdgeId('call'),
@@ -311,11 +422,103 @@ export function parseSourceFilesToGraph(
             }
           }
         }
-        ts.forEachChild(n, visitCallExpressions);
+        ts.forEachChild(n, visitCalls);
+      }
+      visitCalls(caller.tsNode);
+    }
+  }
+
+  // Python parsing
+  function parsePythonFile(file: SourceFileInput, normPath: string, fileNode: GraphNode) {
+    const lines = file.content.split('\n');
+    lines.forEach((line, idx) => {
+      const lineNum = idx + 1;
+      const trimmed = line.trim();
+
+      // Functions: def func_name(...):
+      const funcMatch = /^def\s+([a-zA-Z0-9_]+)\s*\(/i.exec(trimmed);
+      if (funcMatch) {
+        const name = funcMatch[1];
+        const funcNode: GraphNode = {
+          id: generateId('func'),
+          label: `${name}()`,
+          type: 'function',
+          filePath: normPath,
+          line: lineNum,
+          description: `Python function ${name} in ${normPath}:${lineNum}`,
+          metadata: { language: 'python', signature: `def ${name}()` },
+        };
+        nodes.push(funcNode);
+        functionNodeMap.set(`${normPath}#${name}`, funcNode);
+        symbolLookup.set(name, funcNode);
+        edges.push({
+          id: generateEdgeId('defines'),
+          source: fileNode.id,
+          target: funcNode.id,
+          type: 'defines',
+          label: 'defines',
+        });
       }
 
-      visitCallExpressions(caller.tsNode);
-    }
+      // Classes: class ClassName:
+      const classMatch = /^class\s+([a-zA-Z0-9_]+)/i.exec(trimmed);
+      if (classMatch) {
+        const cName = classMatch[1];
+        const classNode: GraphNode = {
+          id: generateId('class'),
+          label: cName,
+          type: 'class',
+          filePath: normPath,
+          line: lineNum,
+          description: `Python class ${cName} in ${normPath}:${lineNum}`,
+          metadata: { language: 'python' },
+        };
+        nodes.push(classNode);
+        classNodeMap.set(`${normPath}#${cName}`, classNode);
+        symbolLookup.set(cName, classNode);
+        edges.push({
+          id: generateEdgeId('defines'),
+          source: fileNode.id,
+          target: classNode.id,
+          type: 'defines',
+          label: 'defines',
+        });
+      }
+    });
+  }
+
+  // Go parsing
+  function parseGoFile(file: SourceFileInput, normPath: string, fileNode: GraphNode) {
+    const lines = file.content.split('\n');
+    lines.forEach((line, idx) => {
+      const lineNum = idx + 1;
+      const trimmed = line.trim();
+
+      // Go function: func (r *Receiver) FuncName(...) or func FuncName(...)
+      const funcMatch = /^func\s+(?:\([^)]+\)\s+)?([A-Za-z0-9_]+)\s*\(/i.exec(trimmed);
+      if (funcMatch) {
+        const name = funcMatch[1];
+        const funcNode: GraphNode = {
+          id: generateId('func'),
+          label: `${name}()`,
+          type: 'function',
+          filePath: normPath,
+          line: lineNum,
+          description: `Go function ${name} in ${normPath}:${lineNum}`,
+          metadata: { language: 'go', signature: `func ${name}()` },
+        };
+        nodes.push(funcNode);
+        functionNodeMap.set(`${normPath}#${name}`, funcNode);
+        symbolLookup.set(name, funcNode);
+        edges.push({
+          id: generateEdgeId('defines'),
+          source: fileNode.id,
+          target: funcNode.id,
+          type: 'defines',
+          label: 'defines',
+        });
+      }
+    });
   }
 
   // 3. Connect tests to matching implementation files
@@ -325,6 +528,7 @@ export function parseSourceFilesToGraph(
         .replace(/\.(test|spec)\./, '.')
         .replace('/tests/', '/src/')
         .replace('tests/', 'src/')
+        .replace('/test/', '/src/')
         .replace('/__tests__/', '/');
 
       for (const [srcPath, srcNode] of fileNodeMap.entries()) {
@@ -351,11 +555,57 @@ export function parseSourceFilesToGraph(
     }
   }
 
+  // 4. Connect commit nodes with modifies edges
+  if (Array.isArray(commits) && commits.length > 0) {
+    for (const c of commits.slice(0, 10)) {
+      const commitNode: GraphNode = {
+        id: generateId('commit'),
+        label: `Commit ${c.hash.slice(0, 7)}`,
+        type: 'commit',
+        filePath: '',
+        description: `${c.message} (by ${c.author})`,
+        metadata: {
+          signature: c.hash,
+          tags: ['git', 'commit'],
+        },
+      };
+      nodes.push(commitNode);
+
+      if (Array.isArray(c.filesChanged)) {
+        for (const changedPath of c.filesChanged) {
+          const matched = fileNodeMap.get(normalizePath(changedPath));
+          if (matched) {
+            edges.push({
+              id: generateEdgeId('modifies'),
+              source: commitNode.id,
+              target: matched.id,
+              type: 'modifies',
+              label: 'modifies',
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // Compute dominant language
+  let dominantLang = 'TypeScript';
+  let maxCount = 0;
+  for (const [l, count] of Object.entries(langCounts)) {
+    if (count > maxCount) {
+      maxCount = count;
+      dominantLang = l.charAt(0).toUpperCase() + l.slice(1);
+    }
+  }
+
   return {
     repoId,
     repoName,
     updatedAt: new Date().toISOString(),
     isDemo: false,
+    branch,
+    commitSha: commitSha || (commits && commits.length > 0 ? commits[0].hash : undefined),
+    primaryLanguage: dominantLang,
     nodes,
     edges,
   };

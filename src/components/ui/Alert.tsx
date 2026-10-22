@@ -3,17 +3,21 @@ import { AlertCircle, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 
 interface AlertProps {
   type?: 'info' | 'warning' | 'error' | 'success';
+  variant?: 'info' | 'warning' | 'error' | 'success' | 'destructive' | string;
   title?: string;
   children: React.ReactNode;
   className?: string;
 }
 
 export const Alert: React.FC<AlertProps> = ({
-  type = 'info',
+  type,
+  variant,
   title,
   children,
   className = '',
 }) => {
+  const normalizedVariant = variant === 'destructive' ? 'error' : variant;
+  const effectiveType = (type || normalizedVariant || 'info') as 'info' | 'warning' | 'error' | 'success';
   const styles = {
     info: {
       border: 'border-[#D3E0F6]',
@@ -39,7 +43,12 @@ export const Alert: React.FC<AlertProps> = ({
       text: 'text-emerald-950',
       icon: <CheckCircle2 className="w-5 h-5 text-status-success shrink-0 mt-0.5 stroke-[1.75]" />,
     },
-  }[type];
+  }[effectiveType] || {
+    border: 'border-[#D3E0F6]',
+    bg: 'bg-app-subtleBlue',
+    text: 'text-[#1D3B7A]',
+    icon: <Info className="w-5 h-5 text-accent-primary shrink-0 mt-0.5 stroke-[1.75]" />,
+  };
 
   return (
     <div className={`flex items-start gap-3 p-4 rounded-lg border ${styles.bg} ${styles.border} ${className}`}>

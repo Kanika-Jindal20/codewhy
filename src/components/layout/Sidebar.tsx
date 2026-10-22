@@ -17,6 +17,11 @@ import {
   Layers,
   FolderGit2,
   X,
+  Bot,
+  Activity,
+  GitPullRequest,
+  TestTube2,
+  Sparkles,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -30,6 +35,7 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   iconBg: string;
   iconColor: string;
+  badge?: string;
 }
 
 interface NavGroup {
@@ -49,16 +55,21 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Reasoning & Intelligence',
     items: [
       { name: 'Ask Why', href: '/ask', icon: HelpCircle, iconBg: 'bg-purple-500/20', iconColor: 'text-purple-400' },
+      { name: 'Autonomous Investigator', href: '/investigator', icon: Bot, iconBg: 'bg-emerald-500/20', iconColor: 'text-emerald-400', badge: 'AI' },
+      { name: 'Change Simulator', href: '/simulator', icon: Sparkles, iconBg: 'bg-amber-500/20', iconColor: 'text-amber-400' },
       { name: 'Knowledge Graph', href: '/graph', icon: Network, iconBg: 'bg-teal-500/20', iconColor: 'text-teal-400' },
       { name: 'Architecture Explorer', href: '/architecture', icon: Compass, iconBg: 'bg-indigo-500/20', iconColor: 'text-indigo-400' },
       { name: 'Impact Analysis', href: '/impact', icon: Zap, iconBg: 'bg-amber-500/20', iconColor: 'text-amber-400' },
     ],
   },
   {
-    label: 'Governance & History',
+    label: 'Governance & Reliability',
     items: [
-      { name: 'Decision Timeline', href: '/timeline', icon: History, iconBg: 'bg-emerald-500/20', iconColor: 'text-emerald-400' },
+      { name: 'PR Risk Reviewer', href: '/pr-reviewer', icon: GitPullRequest, iconBg: 'bg-violet-500/20', iconColor: 'text-violet-400' },
+      { name: 'Architecture Health', href: '/architecture-health', icon: Activity, iconBg: 'bg-blue-500/20', iconColor: 'text-blue-400' },
+      { name: 'Test Gaps', href: '/test-gaps', icon: TestTube2, iconBg: 'bg-amber-500/20', iconColor: 'text-amber-400' },
       { name: 'Knowledge Gaps', href: '/gaps', icon: AlertTriangle, iconBg: 'bg-rose-500/20', iconColor: 'text-rose-400' },
+      { name: 'Decision Timeline', href: '/timeline', icon: History, iconBg: 'bg-emerald-500/20', iconColor: 'text-emerald-400' },
       { name: 'Investigation History', href: '/investigations', icon: Search, iconBg: 'bg-cyan-500/20', iconColor: 'text-cyan-400' },
       { name: 'Reports', href: '/reports', icon: FileText, iconBg: 'bg-fuchsia-500/20', iconColor: 'text-fuchsia-400' },
     ],
@@ -128,27 +139,36 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onClose })
                     key={item.name}
                     href={item.href}
                     onClick={handleLinkClick}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all group relative ${
+                    className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all group relative ${
                       isActive
                         ? 'bg-blue-600/20 text-white border border-blue-500/40 shadow-xs'
                         : 'text-slate-300 hover:text-white hover:bg-white/5'
                     }`}
                   >
-                    {/* Active left indicator bar */}
-                    {isActive && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r bg-[#3B82F6] shadow-glowBlue" />
-                    )}
+                    <div className="flex items-center gap-3">
+                      {/* Active left indicator bar */}
+                      {isActive && (
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r bg-[#3B82F6] shadow-glowBlue" />
+                      )}
 
-                    <div
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all group-hover:scale-105 ${
-                        isActive
-                          ? 'bg-[#3B82F6] text-white shadow-xs'
-                          : `${item.iconBg} ${item.iconColor}`
-                      }`}
-                    >
-                      <Icon className="w-3.5 h-3.5 stroke-[2]" />
+                      <div
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all group-hover:scale-105 ${
+                          isActive
+                            ? 'bg-[#3B82F6] text-white shadow-xs'
+                            : `${item.iconBg} ${item.iconColor}`
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5 stroke-[2]" />
+                      </div>
+
+                      <span className="truncate">{item.name}</span>
                     </div>
-                    <span className="truncate">{item.name}</span>
+
+                    {item.badge && (
+                      <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        {item.badge}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -157,53 +177,48 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onClose })
         ))}
       </nav>
 
-      {/* Footer Info / Active Repository Indicator */}
-      <div className="p-3.5 border-t border-[#1F2E4D] text-xs bg-[#0F1A30]/80 shrink-0">
-        <Link
-          href="/repos"
-          onClick={handleLinkClick}
-          className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-white/5 transition-colors group"
-        >
-          <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/30 group-hover:scale-105 transition-transform">
-            <FolderGit2 className="w-4 h-4 stroke-[2]" />
+      {/* Workspace Status Card */}
+      <div className="p-3 border-t border-[#1F2E4D] bg-[#0E172A]">
+        <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center gap-2.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+          <div className="min-w-0">
+            <span className="text-[11px] font-bold text-slate-200 block truncate leading-tight">
+              Grounded AST Engine
+            </span>
+            <span className="text-[10px] text-slate-400 block truncate leading-tight">
+              Neo4j & Sarvam 105B Ready
+            </span>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-bold text-white text-xs truncate group-hover:text-blue-300 transition-colors">
-              acme/commerce-core
-            </p>
-            <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="truncate font-mono">main · Verified</span>
-            </div>
-          </div>
-        </Link>
+        </div>
       </div>
     </div>
   );
 
   return (
     <>
-      {/* Desktop Persistent Sidebar */}
-      <aside className="hidden md:flex w-64 shrink-0 flex-col z-20">
+      {/* Desktop fixed sidebar */}
+      <aside className="hidden md:flex flex-col w-64 shrink-0 h-screen sticky top-0 z-30">
         {sidebarContent}
       </aside>
 
-      {/* Mobile Drawer Overlay */}
+      {/* Mobile drawer backdrop */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex">
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-[#0F1A30]/80 backdrop-blur-sm transition-opacity"
-            onClick={onClose}
-            aria-hidden="true"
-          />
-
-          {/* Drawer */}
-          <div className="relative w-64 max-w-[85vw] h-full z-10 shadow-2xl">
-            {sidebarContent}
-          </div>
-        </div>
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 md:hidden animate-fade-in"
+          onClick={onClose}
+          aria-hidden="true"
+        />
       )}
+
+      {/* Mobile drawer panel */}
+      <aside
+        className={`fixed top-0 bottom-0 left-0 w-72 z-50 md:hidden transform transition-transform duration-300 ease-in-out shadow-2xl ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+        aria-label="Mobile navigation"
+      >
+        {sidebarContent}
+      </aside>
     </>
   );
 };

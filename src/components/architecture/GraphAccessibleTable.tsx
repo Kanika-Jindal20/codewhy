@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronDown, ChevronRight, ChevronUp, ArrowUpDown } from 'lucide-react';
 import { GraphNode, GraphEdge } from '@/types/graph';
-import { VisEdge, TableSortKey, NODE_TYPE_COLORS, NODE_TYPE_LABELS, EDGE_TYPE_LABELS } from '@/types/architecture';
+import { VisEdge, TableSortKey, FilterState, NODE_TYPE_COLORS, NODE_TYPE_LABELS, EDGE_TYPE_LABELS } from '@/types/architecture';
 import { Badge } from '@/components/ui/Badge';
 import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge';
 
@@ -12,7 +12,8 @@ interface GraphAccessibleTableProps {
   edges: VisEdge[];
   selectedNodeId: string | null;
   onSelectNode: (nodeId: string) => void;
-  onNavigateToNode: (node: GraphNode) => void;
+  onNavigateToNode?: (node: GraphNode) => void;
+  filters?: FilterState;
 }
 
 type SortOrder = 'asc' | 'desc';
@@ -32,24 +33,34 @@ export const GraphAccessibleTable: React.FC<GraphAccessibleTableProps> = ({
   selectedNodeId,
   onSelectNode,
   onNavigateToNode,
+  filters,
 }) => {
   const [sortKey, setSortKey] = useState<TableSortKey>('type');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
+  // Filter nodes if filters are provided
+  const filteredNodes = useMemo(() => {
+    if (!filters || filters.nodeTypes.size === 0) return nodes;
+    return nodes.filter(n => filters.nodeTypes.has(n.type));
+  }, [nodes, filters]);
+
   // Precompute edge counts per node
   const edgeCounts = useMemo(() => {
     const map = new Map<string, number>();
     for (const edge of edges) {
+      if (filters && filters.edgeTypes.size > 0 && !filters.edgeTypes.has(edge.type)) {
+        continue;
+      }
       map.set(edge.sourceId, (map.get(edge.sourceId) ?? 0) + 1);
       map.set(edge.targetId, (map.get(edge.targetId) ?? 0) + 1);
     }
     return map;
-  }, [edges]);
+  }, [edges, filters]);
 
   // Sort
   const sorted = useMemo(() => {
-    const copy = [...nodes];
+    const copy = [...filteredNodes];
     copy.sort((a, b) => {
       let va: string | number = '';
       let vb: string | number = '';
@@ -64,7 +75,7 @@ export const GraphAccessibleTable: React.FC<GraphAccessibleTableProps> = ({
       return 0;
     });
     return copy;
-  }, [nodes, sortKey, sortOrder, edgeCounts]);
+  }, [filteredNodes, sortKey, sortOrder, edgeCounts]);
 
   const handleSort = (key: TableSortKey) => {
     if (sortKey === key) {
@@ -91,7 +102,7 @@ export const GraphAccessibleTable: React.FC<GraphAccessibleTableProps> = ({
       : <ChevronDown className="w-3 h-3 text-accent-primary" />;
   };
 
-  if (nodes.length === 0) {
+  if (filteredNodes.length === 0) {
     return (
       <div className="p-6 text-center text-sm text-text-muted border border-dashed border-app-border rounded-lg">
         No entities to display. Apply a search or expand a node to populate the table.
@@ -136,7 +147,12 @@ export const GraphAccessibleTable: React.FC<GraphAccessibleTableProps> = ({
           {sorted.map(node => {
             const isSelected = node.id === selectedNodeId;
             const isExpanded = expandedRows.has(node.id);
-            const nodeEdges = edges.filter(e => e.sourceId === node.id || e.targetId === node.id);
+            const nodeEdges = edges.filter(e => {
+              if (filters && filters.edgeTypes.size > 0 && !filters.edgeTypes.has(e.type)) {
+                return false;
+              }
+              return e.sourceId === node.id || e.targetId === node.id;
+            });
             const color = NODE_TYPE_COLORS[node.type];
             const evidenceCount = node.evidence?.length ?? 0;
 
@@ -210,12 +226,16 @@ export const GraphAccessibleTable: React.FC<GraphAccessibleTableProps> = ({
 
                   {/* Action */}
                   <td className="py-2.5 px-3 text-right">
-                    <button
-                      onClick={e => { e.stopPropagation(); onNavigateToNode(node); }}
-                      className="text-accent-primary hover:underline font-mono text-[11px]"
-                    >
-                      Explore
-                    </button>
+                    {onNavigateToNode ? (
+                      <button
+                        onClick={e => { e.stopPropagation(); onNavigateToNode(node); }}
+                        className="text-accent-primary hover:underline font-mono text-[11px]"
+                      >
+                        Explore
+                      </button>
+                    ) : (
+                      <span className="font-mono text-[11px] text-text-muted">Selected</span>
+                    )}
                   </td>
                 </tr>
 

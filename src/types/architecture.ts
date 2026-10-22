@@ -109,6 +109,9 @@ export const EDGE_TYPE_LABELS: Record<EdgeType, string> = {
   configures:  'Configures',
   co_changed:  'Co-Changed',
   supersedes:  'Supersedes',
+  defines:     'Defines',
+  depends_on:  'Depends On',
+  modifies:    'Modifies',
 };
 
 /**
@@ -124,4 +127,7 @@ export const EDGE_TYPE_EXPLANATIONS: Record<EdgeType, (sourceLabel: string, targ
   configures: (s, t) => `"${s}" reads or references configuration values defined in "${t}".`,
   co_changed: (s, t) => `"${s}" and "${t}" have historically been modified together in the same commits. This is a statistical observation, not a structural dependency.`,
   supersedes: (s, t) => `"${s}" replaces or deprecates "${t}" according to a recorded decision or migration event.`,
+  defines:    (s, t) => `"${s}" defines or contains "${t}" in its source declaration.`,
+  depends_on: (s, t) => `"${s}" structurally depends on "${t}" to operate.`,
+  modifies:   (s, t) => `"${s}" modifies "${t}" in its recorded commit diff.`,
 };

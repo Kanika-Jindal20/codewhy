@@ -17,7 +17,7 @@ export function buildReportFromInvestigation(inv: Investigation): EngineeringDec
   };
 
   const findings = inv.entries.flatMap((entry, idx) =>
-    entry.detailedFindings.map((finding, fIdx) => ({
+    (entry.detailedFindings || []).map((finding, fIdx) => ({
       id: `finding-${entry.id}-${fIdx}`,
       title: finding.slice(0, 50),
       category: 'Architectural Finding',
@@ -44,7 +44,7 @@ export function buildReportFromInvestigation(inv: Investigation): EngineeringDec
     executiveSummary: {
       headline: inv.entries[0]?.answerSummary || inv.originalQuestion,
       overview: `Traceable engineering audit for ${inv.title}. Grounded across ${allEvidence.length} verified code/AST citations.`,
-      criticalTakeaways: inv.entries[0]?.detailedFindings.slice(0, 3) || [
+      criticalTakeaways: inv.entries[0]?.detailedFindings?.slice(0, 3) || [
         'AST relationships verified across repo knowledge graph.',
       ],
       riskAssessmentLevel: findings.some(f => f.severity === 'high') ? 'elevated' : 'moderate',
@@ -67,20 +67,32 @@ export function buildReportFromInvestigation(inv: Investigation): EngineeringDec
     evidence: allEvidence,
     uncertainties: inv.entries.length === 1 && allEvidence.length === 0 ? [
       {
-        uncertaintyDescription: 'No linked documentation or ADR retrieved for historical rationale.',
-        conflictingEvidence: [],
-        impactOnRecommendation: 'Team should verify commit logs directly.',
+        area: 'Historical Documentation',
+        divergingSignals: 'No linked documentation or ADR retrieved for historical rationale.',
+        confidenceScore: 0.5,
+        suggestedClarification: 'Team should verify commit logs directly.',
       }
     ] : [],
     decisionTimeline: inv.entries.map((e, idx) => ({
       id: `dt-${e.id}`,
       date: e.timestamp.slice(0, 10),
       title: e.question,
-      summary: e.answerSummary,
-      rationale: e.detailedFindings[0] || e.answerSummary,
-      status: idx === 0 ? 'supported_decision' : 'historical_event',
-      evidenceIds: e.evidence.map(ev => ev.id),
+      rationale: e.detailedFindings?.[0] || e.answerSummary,
+      status: (idx === 0 ? 'active' : 'deprecated') as 'active' | 'deprecated',
+      evidenceId: e.evidence[0]?.id,
     })),
+    limitations: {
+      staticAnalysisCaveats: [
+        'Dynamic reflection: Runtime eval() or dynamic import() cannot be deterministically resolved by AST alone.',
+      ],
+      recommendedChecklist: [
+        'Run automated regression test suite.',
+        'Verify public API contract signatures.',
+      ],
+      suggestedFollowUpInvestigations: [
+        'Audit downstream caller error handling.',
+      ],
+    },
     confidence: {
       level: allEvidence.length > 2 ? 'high' : 'medium',
       score: allEvidence.length > 2 ? 0.95 : 0.75,

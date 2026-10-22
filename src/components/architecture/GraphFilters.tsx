@@ -10,10 +10,16 @@ const ALL_EDGE_TYPES: EdgeType[] = ['imports', 'calls', 'extends', 'implements',
 
 interface GraphFiltersProps {
   filters: FilterState;
-  onChange: (filters: FilterState) => void;
+  onChange?: (filters: FilterState) => void;
+  onFilterChange?: (filters: FilterState) => void;
 }
 
-export const GraphFilters: React.FC<GraphFiltersProps> = ({ filters, onChange }) => {
+export const GraphFilters: React.FC<GraphFiltersProps> = ({ filters, onChange, onFilterChange }) => {
+  const notifyChange = (nextFilters: FilterState) => {
+    if (onChange) onChange(nextFilters);
+    if (onFilterChange) onFilterChange(nextFilters);
+  };
+
   const toggleNodeType = (type: NodeType) => {
     const next = new Set(filters.nodeTypes);
     if (next.has(type)) {
@@ -21,7 +27,7 @@ export const GraphFilters: React.FC<GraphFiltersProps> = ({ filters, onChange })
     } else {
       next.add(type);
     }
-    onChange({ ...filters, nodeTypes: next });
+    notifyChange({ ...filters, nodeTypes: next });
   };
 
   const toggleEdgeType = (type: EdgeType) => {
@@ -31,11 +37,11 @@ export const GraphFilters: React.FC<GraphFiltersProps> = ({ filters, onChange })
     } else {
       next.add(type);
     }
-    onChange({ ...filters, edgeTypes: next });
+    notifyChange({ ...filters, edgeTypes: next });
   };
 
   const clearAll = () =>
-    onChange({ ...filters, nodeTypes: new Set(), edgeTypes: new Set() });
+    notifyChange({ ...filters, nodeTypes: new Set(), edgeTypes: new Set() });
 
   const hasActiveFilters = filters.nodeTypes.size > 0 || filters.edgeTypes.size > 0;
 

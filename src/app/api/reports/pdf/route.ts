@@ -71,8 +71,11 @@ export async function GET(req: NextRequest) {
     const invId = sp.get('investigationId');
     const sample = sp.get('sample') || 'commerce-jwt';
 
-    const report: EngineeringDecisionReport = invId ? (await import('@/lib/reports/report-generator')).buildReportFromInvestigation((await import('@/lib/investigations/investigation-store')).investigationStore.getById(invId, 'user-dev-current') || SAMPLE_REPORT_JWT_REFACTOR) :
-      sample === 'minimal' ? SAMPLE_REPORT_MINIMAL : SAMPLE_REPORT_JWT_REFACTOR;
+    const invStore = (await import('@/lib/investigations/investigation-store')).investigationStore;
+    const inv = invId ? invStore.getById(invId, 'user-dev-current') : null;
+    const report: EngineeringDecisionReport = inv
+      ? (await import('@/lib/reports/report-generator')).buildReportFromInvestigation(inv)
+      : sample === 'minimal' ? SAMPLE_REPORT_MINIMAL : SAMPLE_REPORT_JWT_REFACTOR;
 
     const builder = new ReportPdfBuilder(report);
     const pdfBuffer = builder.generate();

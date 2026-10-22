@@ -32,12 +32,12 @@ interface GitHubRepositoryResponse {
 function invalidRepositoryUrl(): RepositoryLookupError {
   return new RepositoryLookupError(
     'INVALID_REPOSITORY_URL',
-    'Enter a valid public GitHub repository URL.',
+    'Enter a valid GitHub repository URL.',
     400
   );
 }
 
-function parseRepositoryUrl(input: string): { owner: string; name: string } {
+export function parseRepositoryUrl(input: string): { owner: string; name: string } {
   if (input !== input.trim()) {
     throw invalidRepositoryUrl();
   }
@@ -135,7 +135,7 @@ function getUpstreamError(response: Response): RepositoryLookupError {
   if (response.status === 404) {
     return new RepositoryLookupError(
       'REPOSITORY_NOT_FOUND',
-      'Repository not found or not publicly accessible.',
+      'Repository not found or not accessible. If private, configure GITHUB_TOKEN.',
       404
     );
   }
@@ -148,7 +148,7 @@ function getUpstreamError(response: Response): RepositoryLookupError {
   if (isRateLimited) {
     return new RepositoryLookupError(
       'GITHUB_RATE_LIMITED',
-      'GitHub API rate limit exceeded. Please try again later.',
+      'GitHub API rate limit exceeded. Please try again later or provide a token.',
       429
     );
   }
@@ -161,7 +161,8 @@ function getUpstreamError(response: Response): RepositoryLookupError {
 }
 
 export async function lookupPublicGitHubRepository(
-  repositoryUrl: string
+  repositoryUrl: string,
+  authToken?: string
 ): Promise<RepositoryMetadata> {
   const { owner, name } = parseRepositoryUrl(repositoryUrl);
   const endpoint = new URL(
@@ -169,13 +170,20 @@ export async function lookupPublicGitHubRepository(
     GITHUB_API_ORIGIN
   );
 
+  const token = authToken?.trim() || process.env.GITHUB_TOKEN?.trim();
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'CodeWhy-Intelligence-Platform',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   let response: Response;
   try {
     response = await fetch(endpoint, {
-      headers: {
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
+      headers,
       signal: AbortSignal.timeout(10_000),
       cache: 'no-store',
       redirect: 'error',
@@ -211,10 +219,11 @@ export async function lookupPublicGitHubRepository(
     );
   }
 
-  if (payload.private) {
+  // If private and no token was provided, reject for lookupPublicGitHubRepository
+  if (payload.private && !token) {
     throw new RepositoryLookupError(
       'REPOSITORY_NOT_FOUND',
-      'Repository not found or not publicly accessible.',
+      'Repository not found or not publicly accessible. Authenticated token required for private repositories.',
       404
     );
   }
@@ -239,25 +248,61 @@ export interface FetchedCommit {
 }
 
 /**
- * Fetches actual source files from a GitHub repository for real AST analysis.
+ * Lists available branches from a GitHub repository.
  */
-export async function fetchGitHubRepositorySourceFiles(
+export async function fetchGitHubBranches(
   owner: string,
   name: string,
-  branch: string = 'main',
-  maxFiles: number = 40
-): Promise<{
-  files: Array<{ filePath: string; content: string }>;
-  commits: FetchedCommit[];
-  defaultBranch: string;
-}> {
+  authToken?: string
+): Promise<string[]> {
+  const token = authToken?.trim() || process.env.GITHUB_TOKEN?.trim();
   const headers: Record<string, string> = {
     Accept: 'application/vnd.github+json',
     'X-GitHub-Api-Version': '2022-11-28',
     'User-Agent': 'CodeWhy-Intelligence-Platform',
   };
-  if (process.env.GITHUB_TOKEN?.trim()) {
-    headers['Authorization'] = `Bearer ${process.env.GITHUB_TOKEN.trim()}`;
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  try {
+    const url = `${GITHUB_API_ORIGIN}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/branches?per_page=30`;
+    const res = await fetch(url, { headers, cache: 'no-store' });
+    if (!res.ok) return ['main'];
+    const data = (await res.json()) as Array<{ name: string }>;
+    if (Array.isArray(data)) {
+      return data.map(b => b.name);
+    }
+  } catch {
+    // fallback
+  }
+  return ['main'];
+}
+
+/**
+ * Fetches actual source files and commit history from a GitHub repository for real AST analysis.
+ */
+export async function fetchGitHubRepositorySourceFiles(
+  owner: string,
+  name: string,
+  branch: string = 'main',
+  maxFiles: number = 50,
+  authToken?: string
+): Promise<{
+  files: Array<{ filePath: string; content: string }>;
+  commits: FetchedCommit[];
+  defaultBranch: string;
+  commitSha?: string;
+  totalFilesDiscovered: number;
+}> {
+  const token = authToken?.trim() || process.env.GITHUB_TOKEN?.trim();
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'CodeWhy-Intelligence-Platform',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   // 1. Fetch Git Tree recursively
@@ -267,20 +312,31 @@ export async function fetchGitHubRepositorySourceFiles(
     throw new Error(`Failed to fetch file tree from GitHub (${treeRes.status}: ${treeRes.statusText})`);
   }
 
-  const treeData = (await treeRes.json()) as { tree?: Array<{ path: string; type: string; size?: number }> };
+  const treeData = (await treeRes.json()) as { tree?: Array<{ path: string; type: string; size?: number; sha?: string }> };
   if (!Array.isArray(treeData.tree)) {
     throw new Error('Invalid file tree returned by GitHub.');
   }
 
-  // Filter valid code files, excluding heavy artifacts
+  const totalFilesDiscovered = treeData.tree.filter(item => item.type === 'blob').length;
+
+  // Filter valid code files across TS, JS, Python, Go, and configs
   const codeFiles = treeData.tree
     .filter(item => {
       if (item.type !== 'blob') return false;
       const p = item.path.toLowerCase();
-      if (p.includes('node_modules/') || p.includes('.git/') || p.includes('.next/') || p.includes('dist/') || p.includes('build/')) return false;
+      if (
+        p.includes('node_modules/') ||
+        p.includes('.git/') ||
+        p.includes('.next/') ||
+        p.includes('dist/') ||
+        p.includes('build/') ||
+        p.includes('vendor/')
+      ) {
+        return false;
+      }
       if (p.endsWith('package-lock.json') || p.endsWith('yarn.lock') || p.endsWith('pnpm-lock.yaml')) return false;
       if (p.endsWith('.min.js') || p.endsWith('.min.css')) return false;
-      return /\.(ts|tsx|js|jsx|json)$/i.test(p);
+      return /\.(ts|tsx|js|jsx|json|py|go|ya?ml)$/i.test(p);
     })
     .slice(0, maxFiles);
 
@@ -289,15 +345,32 @@ export async function fetchGitHubRepositorySourceFiles(
   await Promise.all(
     codeFiles.map(async file => {
       try {
+        // Use raw content endpoint
         const rawUrl = `https://raw.githubusercontent.com/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/${encodeURIComponent(branch)}/${file.path}`;
         const rawRes = await fetch(rawUrl, {
-          headers: process.env.GITHUB_TOKEN ? { Authorization: headers['Authorization'] } : {},
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
           cache: 'no-store',
         });
         if (rawRes.ok) {
           const content = await rawRes.text();
-          if (content.length < 200_000) {
+          if (content.length < 250_000) {
             files.push({ filePath: file.path, content });
+          }
+        } else {
+          // Fallback to GitHub API contents
+          const apiContentUrl = `${GITHUB_API_ORIGIN}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/contents/${encodeURIComponent(file.path)}?ref=${encodeURIComponent(branch)}`;
+          const apiRes = await fetch(apiContentUrl, {
+            headers: {
+              ...headers,
+              Accept: 'application/vnd.github.raw',
+            },
+            cache: 'no-store',
+          });
+          if (apiRes.ok) {
+            const content = await apiRes.text();
+            if (content.length < 250_000) {
+              files.push({ filePath: file.path, content });
+            }
           }
         }
       } catch {
@@ -306,14 +379,17 @@ export async function fetchGitHubRepositorySourceFiles(
     })
   );
 
-  // 3. Fetch recent commits
+  // 3. Fetch recent commits with file diffs
   const commits: FetchedCommit[] = [];
+  let latestCommitSha: string | undefined;
+
   try {
-    const commitsUrl = `${GITHUB_API_ORIGIN}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/commits?per_page=10`;
+    const commitsUrl = `${GITHUB_API_ORIGIN}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/commits?sha=${encodeURIComponent(branch)}&per_page=10`;
     const commitsRes = await fetch(commitsUrl, { headers, cache: 'no-store' });
     if (commitsRes.ok) {
       const commitList = (await commitsRes.json()) as any[];
-      if (Array.isArray(commitList)) {
+      if (Array.isArray(commitList) && commitList.length > 0) {
+        latestCommitSha = commitList[0].sha;
         for (const c of commitList) {
           commits.push({
             hash: c.sha?.slice(0, 7) || 'unknown',
@@ -328,13 +404,19 @@ export async function fetchGitHubRepositorySourceFiles(
     // Non-fatal if commit history unavailable
   }
 
-  return { files, commits, defaultBranch: branch };
+  return {
+    files,
+    commits,
+    defaultBranch: branch,
+    commitSha: latestCommitSha,
+    totalFilesDiscovered,
+  };
 }
 
 /**
  * Scans local workspace repository files directly from disk.
  */
-export function scanLocalWorkspaceFiles(maxFiles: number = 60): Array<{ filePath: string; content: string }> {
+export function scanLocalWorkspaceFiles(maxFiles: number = 80): Array<{ filePath: string; content: string }> {
   const fs = require('fs');
   const path = require('path');
   const rootDir = process.cwd();
@@ -350,13 +432,13 @@ export function scanLocalWorkspaceFiles(maxFiles: number = 60): Array<{ filePath
         const rel = path.relative(rootDir, full).replace(/\\/g, '/');
 
         if (entry.isDirectory()) {
-          if (['node_modules', '.next', '.git', 'dist', 'build', 'coverage', '.gemini'].includes(entry.name)) continue;
+          if (['node_modules', '.next', '.git', 'dist', 'build', 'coverage', '.gemini', 'tmp'].includes(entry.name)) continue;
           walk(full);
         } else if (entry.isFile()) {
-          if (/\.(ts|tsx|js|jsx|json)$/i.test(entry.name) && !entry.name.endsWith('.lock') && !entry.name.includes('.min.')) {
+          if (/\.(ts|tsx|js|jsx|json|py|go|ya?ml)$/i.test(entry.name) && !entry.name.endsWith('.lock') && !entry.name.includes('.min.')) {
             try {
               const stat = fs.statSync(full);
-              if (stat.size < 150_000) {
+              if (stat.size < 200_000) {
                 const content = fs.readFileSync(full, 'utf8');
                 results.push({ filePath: rel, content });
               }
@@ -373,4 +455,47 @@ export function scanLocalWorkspaceFiles(maxFiles: number = 60): Array<{ filePath
 
   walk(path.join(rootDir, 'src'));
   return results;
+}
+
+/**
+ * Scans local git commits from workspace directly.
+ */
+export function scanLocalGitCommits(maxCommits: number = 10): Array<{
+  hash: string;
+  message: string;
+  author: string;
+  timestamp: string;
+  filesChanged?: string[];
+}> {
+  try {
+    const cp = require('child_process');
+    const out = cp.execSync(
+      `git log -n ${maxCommits} --name-only --format=COMMIT_SEP%H@@@%s@@@%an@@@%cI`,
+      { encoding: 'utf8', cwd: process.cwd(), timeout: 5000 }
+    );
+    const rawChunks = out.split('COMMIT_SEP').filter(Boolean);
+    const commits: Array<{
+      hash: string;
+      message: string;
+      author: string;
+      timestamp: string;
+      filesChanged?: string[];
+    }> = [];
+
+    for (const chunk of rawChunks) {
+      const lines = chunk.trim().split(/\r?\n/);
+      const meta = lines[0]?.split('@@@');
+      if (meta && meta.length >= 4) {
+        const hash = meta[0].trim();
+        const message = meta[1].trim();
+        const author = meta[2].trim();
+        const timestamp = meta[3].trim();
+        const filesChanged = lines.slice(1).map((l: string) => l.trim()).filter(Boolean);
+        commits.push({ hash, message, author, timestamp, filesChanged });
+      }
+    }
+    return commits;
+  } catch {
+    return [];
+  }
 }

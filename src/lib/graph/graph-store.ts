@@ -44,6 +44,9 @@ export function getAllRepositories(): {
   edgeCount: number;
   isDemo?: boolean;
   isActive?: boolean;
+  branch?: string;
+  commitSha?: string;
+  primaryLanguage?: string;
 }[] {
   return Array.from(repositories.values()).map(r => ({
     repoId: r.repoId,
@@ -53,6 +56,9 @@ export function getAllRepositories(): {
     edgeCount: r.edges.length,
     isDemo: Boolean(r.isDemo),
     isActive: r.repoId === activeRepoId,
+    branch: r.branch || 'main',
+    commitSha: r.commitSha,
+    primaryLanguage: r.primaryLanguage || 'TypeScript',
   }));
 }
 

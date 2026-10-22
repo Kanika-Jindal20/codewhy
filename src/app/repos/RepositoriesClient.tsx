@@ -22,6 +22,8 @@ import {
   Database,
   RefreshCw,
   Trash2,
+  GitCommit,
+  Key,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -37,6 +39,8 @@ interface RegisteredRepo {
   description?: string;
   isDemo?: boolean;
   isActive?: boolean;
+  branch?: string;
+  commitSha?: string;
 }
 
 export function RepositoriesClient() {
@@ -51,6 +55,9 @@ export function RepositoriesClient() {
   const [isLoadingRepos, setIsLoadingRepos] = useState(true);
 
   const [lookupUrl, setLookupUrl] = useState('');
+  const [customBranch, setCustomBranch] = useState('');
+  const [customToken, setCustomToken] = useState('');
+  const [showTokenInput, setShowTokenInput] = useState(false);
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [lookupResult, setLookupResult] = useState<any | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
@@ -86,7 +93,7 @@ export function RepositoriesClient() {
     loadRepositories();
   }, []);
 
-  const handleIndex = async (payload: { url?: string; repoId?: string; isLocal?: boolean; branch?: string }) => {
+  const handleIndex = async (payload: { url?: string; repoId?: string; isLocal?: boolean; branch?: string; token?: string }) => {
     setIsIndexing(true);
     setIndexStatus(null);
     try {
@@ -141,6 +148,7 @@ export function RepositoriesClient() {
       setDeletingRepoId(null);
     }
   };
+
   const handleActivateRepo = async (repoId: string) => {
     try {
       const res = await fetch('/api/repositories', {
@@ -167,7 +175,10 @@ export function RepositoriesClient() {
     try {
       const res = await fetch('/api/repositories', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(customToken ? { 'x-github-token': customToken.trim() } : {}),
+        },
         body: JSON.stringify({ url: lookupUrl.trim() }),
       });
       const data = await res.json();
@@ -175,6 +186,7 @@ export function RepositoriesClient() {
         throw new Error(data.error?.message || 'Failed to lookup repository');
       }
       setLookupResult(data.repository);
+      setCustomBranch(data.repository.defaultBranch || 'main');
     } catch (err) {
       setLookupError(err instanceof Error ? err.message : 'Error checking repository');
     } finally {
@@ -183,7 +195,7 @@ export function RepositoriesClient() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-16">
+    <div className="font-['Inter',sans-serif] max-w-6xl mx-auto space-y-8 pb-16">
       {/* ── Page Header Banner ── */}
       <header className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-700 p-6 sm:p-7 text-white shadow-xl">
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_top_right,_white_0%,_transparent_70%)] pointer-events-none" />
@@ -257,7 +269,7 @@ export function RepositoriesClient() {
             <h2 className="text-base font-bold text-[#172033]">
               Configured & Indexed Repositories
             </h2>
-            <p className="text-xs text-text-secondary">
+            <p className="text-xs text-slate-500">
               Fully parsed AST knowledge graphs ready for architectural reasoning, impact analysis, and Q&amp;A.
             </p>
           </div>
@@ -276,7 +288,7 @@ export function RepositoriesClient() {
             <div
               key={repo.repoId}
               className={`bg-white border rounded-3xl p-6 sm:p-8 transition-all hover:shadow-card shadow-xs space-y-6 ${
-                repo.isActive ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-app-border'
+                repo.isActive ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-slate-200'
               }`}
             >
               <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
@@ -301,28 +313,37 @@ export function RepositoriesClient() {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 mt-0.5">
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 border border-emerald-500/20">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                           AST Verified
                         </span>
                         <span className="text-slate-400 text-xs">·</span>
-                        <span className="text-xs text-text-muted font-mono">
-                          ID: {repo.repoId}
+                        <span className="text-xs text-slate-500 font-mono">
+                          Branch: {repo.branch || 'main'}
                         </span>
+                        {repo.commitSha && (
+                          <>
+                            <span className="text-slate-400 text-xs">·</span>
+                            <span className="text-xs text-slate-500 font-mono flex items-center gap-1">
+                              <GitCommit className="w-3 h-3 text-slate-400" />
+                              {repo.commitSha.slice(0, 7)}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   {repo.description && (
-                    <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
+                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                       {repo.description}
                     </p>
                   )}
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
-                    <div className="p-3 rounded-xl bg-[#F8FAFC] border border-app-border">
-                      <div className="flex items-center gap-1 text-[11px] font-bold text-text-muted uppercase tracking-wider">
+                    <div className="p-3 rounded-xl bg-[#F8FAFC] border border-slate-200">
+                      <div className="flex items-center gap-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                         <Network className="w-3.5 h-3.5 text-[#3B82F6]" />
                         AST Nodes
                       </div>
@@ -331,8 +352,8 @@ export function RepositoriesClient() {
                       </div>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-[#F8FAFC] border border-app-border">
-                      <div className="flex items-center gap-1 text-[11px] font-bold text-text-muted uppercase tracking-wider">
+                    <div className="p-3 rounded-xl bg-[#F8FAFC] border border-slate-200">
+                      <div className="flex items-center gap-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                         <Share2 className="w-3.5 h-3.5 text-[#8B5CF6]" />
                         Relationships
                       </div>
@@ -341,18 +362,18 @@ export function RepositoriesClient() {
                       </div>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-[#F8FAFC] border border-app-border">
-                      <div className="flex items-center gap-1 text-[11px] font-bold text-text-muted uppercase tracking-wider">
-                        <Clock className="w-3.5 h-3.5 text-text-muted" />
+                    <div className="p-3 rounded-xl bg-[#F8FAFC] border border-slate-200">
+                      <div className="flex items-center gap-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
                         Updated
                       </div>
-                      <div className="text-xs font-bold text-text-primary mt-1">
+                      <div className="text-xs font-bold text-slate-700 mt-1">
                         {new Date(repo.updatedAt).toLocaleDateString()}
                       </div>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-[#F8FAFC] border border-app-border">
-                      <div className="flex items-center gap-1 text-[11px] font-bold text-text-muted uppercase tracking-wider">
+                    <div className="p-3 rounded-xl bg-[#F8FAFC] border border-slate-200">
+                      <div className="flex items-center gap-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                         <FileCode className="w-3.5 h-3.5 text-emerald-600" />
                         Language
                       </div>
@@ -402,6 +423,17 @@ export function RepositoriesClient() {
                     </Button>
                   </Link>
 
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleIndex({ repoId: repo.repoId, branch: repo.branch || 'main' })}
+                    isLoading={isIndexing}
+                    icon={<RefreshCw className="w-3.5 h-3.5 text-blue-600" />}
+                    className="w-full justify-center text-xs font-semibold"
+                  >
+                    Re-index
+                  </Button>
+
                   {!repo.isDemo && (
                     <Button
                       variant="ghost"
@@ -422,7 +454,7 @@ export function RepositoriesClient() {
       </section>
 
       {/* Connect GitHub or Local Workspace */}
-      <section className="bg-white border border-app-border rounded-3xl p-6 sm:p-8 space-y-6 shadow-card">
+      <section className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
@@ -431,8 +463,8 @@ export function RepositoriesClient() {
                 Connect &amp; Index Real Repository
               </h2>
             </div>
-            <p className="text-xs sm:text-sm text-text-secondary mt-0.5">
-              Parse real TypeScript AST files from public GitHub repositories or index your local workspace codebase.
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+              Parse real TypeScript, JavaScript, Python, or Go files from GitHub repositories or index your local workspace codebase.
             </p>
           </div>
 
@@ -450,7 +482,7 @@ export function RepositoriesClient() {
 
         {/* Quick demo links */}
         <div className="flex flex-wrap items-center gap-2 pt-1">
-          <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">Try Example:</span>
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Try Example:</span>
           {[
             'expressjs/express',
             'facebook/react',
@@ -459,39 +491,73 @@ export function RepositoriesClient() {
             <button
               key={example}
               type="button"
-              onClick={() => setLookupUrl(`https://github.com/${example}`)}
-              className="text-xs font-mono px-2.5 py-1 rounded-lg bg-[#F8FAFC] border border-app-border text-[#3B82F6] hover:bg-[#EBF2FF] hover:border-blue-300 transition-colors"
+              onClick={() => {
+                setLookupUrl(`https://github.com/${example}`);
+                setCustomBranch('main');
+              }}
+              className="text-xs font-mono px-2.5 py-1 rounded-lg bg-[#F8FAFC] border border-slate-200 text-[#3B82F6] hover:bg-[#EBF2FF] hover:border-blue-300 transition-colors"
             >
               {example}
             </button>
           ))}
         </div>
 
-        <form onSubmit={handleLookup} className="flex flex-col sm:flex-row gap-3 pt-2">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-text-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={lookupUrl}
-              onChange={(e) => setLookupUrl(e.target.value)}
-              placeholder="e.g. https://github.com/expressjs/express or owner/repo"
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-app-border bg-[#F8FAFC] text-xs sm:text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-[#3B82F6] focus:bg-white focus:ring-2 focus:ring-[#3B82F6]/15 transition-all"
-            />
+        <form onSubmit={handleLookup} className="space-y-3 pt-2">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={lookupUrl}
+                onChange={(e) => setLookupUrl(e.target.value)}
+                placeholder="e.g. https://github.com/expressjs/express or owner/repo"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 bg-[#F8FAFC] text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#3B82F6] focus:bg-white focus:ring-2 focus:ring-[#3B82F6]/15 transition-all"
+              />
+            </div>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              isLoading={isLookingUp}
+              disabled={!lookupUrl.trim()}
+              className="shadow-xs font-bold"
+            >
+              Inspect Repository
+            </Button>
           </div>
-          <Button
-            type="submit"
-            variant="primary"
-            size="md"
-            isLoading={isLookingUp}
-            disabled={!lookupUrl.trim()}
-            className="shadow-xs font-bold"
-          >
-            Inspect Repository
-          </Button>
+
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <button
+              type="button"
+              onClick={() => setShowTokenInput(!showTokenInput)}
+              className="text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1"
+            >
+              <Key className="w-3.5 h-3.5" />
+              {showTokenInput ? 'Hide Private Repository Token' : 'Add Private Repository Token (Optional)'}
+            </button>
+          </div>
+
+          {showTokenInput && (
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+              <label className="block text-[11px] font-bold uppercase text-slate-500">
+                GitHub Personal Access Token (for private repositories)
+              </label>
+              <input
+                type="password"
+                value={customToken}
+                onChange={(e) => setCustomToken(e.target.value)}
+                placeholder="ghp_xxxxxxxxxxxx (never logged or exposed)"
+                className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white font-mono"
+              />
+              <span className="text-[10px] text-slate-400 block">
+                Token is sent securely over HTTPS directly to GitHub and never stored in frontend code.
+              </span>
+            </div>
+          )}
         </form>
 
         {lookupError && (
-          <Alert type="error" title="Lookup Error">
+          <Alert variant="error" title="Lookup Error">
             {lookupError}
           </Alert>
         )}
@@ -507,7 +573,7 @@ export function RepositoriesClient() {
                   <span className="font-bold text-sm text-[#172033] block">
                     {lookupResult.name}
                   </span>
-                  <span className="text-[11px] text-text-muted font-mono">
+                  <span className="text-[11px] text-slate-500 font-mono">
                     Owner: {lookupResult.owner} · Default Branch: {lookupResult.defaultBranch || 'main'}
                   </span>
                 </div>
@@ -529,7 +595,13 @@ export function RepositoriesClient() {
                   variant="primary"
                   size="sm"
                   isLoading={isIndexing}
-                  onClick={() => handleIndex({ url: lookupResult.url, branch: lookupResult.defaultBranch })}
+                  onClick={() =>
+                    handleIndex({
+                      url: lookupResult.url,
+                      branch: customBranch || lookupResult.defaultBranch,
+                      token: customToken || undefined,
+                    })
+                  }
                   className="font-bold bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   Index &amp; Parse into Platform
@@ -538,16 +610,22 @@ export function RepositoriesClient() {
             </div>
 
             {lookupResult.description && (
-              <p className="text-xs text-text-secondary leading-relaxed bg-white p-3 rounded-xl border border-app-border">
+              <p className="text-xs text-slate-600 leading-relaxed bg-white p-3 rounded-xl border border-slate-200">
                 {lookupResult.description}
               </p>
             )}
 
-            <div className="flex flex-wrap gap-4 text-xs text-text-secondary pt-1 font-mono">
-              <span className="px-2.5 py-1 rounded-md bg-white border border-app-border">
-                Default Branch: <strong className="text-[#172033]">{lookupResult.defaultBranch || 'main'}</strong>
-              </span>
-              <span className="px-2.5 py-1 rounded-md bg-white border border-app-border">
+            <div className="flex flex-wrap gap-4 text-xs text-slate-600 pt-1 font-mono">
+              <div className="flex items-center gap-2 bg-white px-2.5 py-1 rounded-md border border-slate-200">
+                <span>Branch:</span>
+                <input
+                  type="text"
+                  value={customBranch}
+                  onChange={(e) => setCustomBranch(e.target.value)}
+                  className="font-bold text-slate-900 border-b border-blue-500 outline-none w-24 px-1"
+                />
+              </div>
+              <span className="px-2.5 py-1 rounded-md bg-white border border-slate-200">
                 Language: <strong className="text-[#8B5CF6]">{lookupResult.primaryLanguage || 'Multi-language'}</strong>
               </span>
             </div>

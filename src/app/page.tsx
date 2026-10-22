@@ -24,6 +24,9 @@ import {
   TestTube2,
   Settings2,
   Sparkles,
+  Bot,
+  GitPullRequest,
+  Activity,
 } from 'lucide-react';
 import { SAMPLE_REPO_ECOMMERCE, getActiveRepositoryGraph } from '@/lib/graph/graph-store';
 import { COMMERCE_COMMIT_HISTORY } from '@/lib/impact/heuristics-engine';
@@ -32,7 +35,7 @@ import { Badge } from '@/components/ui/Badge';
 
 export default function DashboardOverviewPage() {
   const repo = getActiveRepositoryGraph();
-  const commits = COMMERCE_COMMIT_HISTORY.slice(0, 4);
+
 
   // Exact metrics computed from real graph data
   const totalNodes = repo.nodes.length;
@@ -41,6 +44,128 @@ export default function DashboardOverviewPage() {
   const symbolCount = repo.nodes.filter(n => n.type === 'function' || n.type === 'class').length;
   const testCount = repo.nodes.filter(n => n.type === 'test').length;
   const configCount = repo.nodes.filter(n => n.type === 'config').length;
+
+  // Extract real commits if available from repo or fall back to sample for demo repo
+  const repoCommitNodes = repo.nodes.filter(n => n.type === 'commit');
+  const realCommits = repoCommitNodes.length > 0
+    ? repoCommitNodes.slice(0, 4).map(cn => {
+        const edgeFiles = repo.edges
+          .filter(e => e.source === cn.id && e.type === 'modifies')
+          .map(e => repo.nodes.find(n => n.id === e.target)?.filePath || '')
+          .filter(Boolean);
+        const hash = cn.metadata?.signature || cn.label.replace('Commit ', '');
+        return {
+          hash: hash.slice(0, 7),
+          message: cn.description?.split(' (by ')[0] || cn.label,
+          author: cn.description?.split(' (by ')[1]?.replace(')', '') || 'Developer',
+          date: repo.updatedAt || new Date().toISOString(),
+          filesChanged: edgeFiles.length > 0 ? edgeFiles.slice(0, 3) : ['source code'],
+          isRegressionOrBugfix: /fix|bug|patch|revert/i.test(cn.description || cn.label),
+        };
+      })
+    : repo.isDemo
+      ? COMMERCE_COMMIT_HISTORY.slice(0, 4)
+      : [];
+  const commits = realCommits.length > 0 ? realCommits : (repo.isDemo ? COMMERCE_COMMIT_HISTORY.slice(0, 4) : []);
+
+  // Dynamically compute runtime execution path
+  const callEdges = repo.edges.filter(e => e.type === 'calls' || e.type === 'imports' || e.type === 'defines' || e.type === 'depends_on');
+  let flowChain: Array<{ step: string; label: string; path: string; tag: string }> = [];
+
+  if (!repo.isDemo && callEdges.length > 0) {
+    let foundPair: [any, any] | null = null;
+    for (const e1 of callEdges) {
+      const nextEdge = callEdges.find(e2 => e2.source === e1.target && e2.target !== e1.source);
+      if (nextEdge) {
+        foundPair = [e1, nextEdge];
+        break;
+      }
+    }
+
+    if (foundPair) {
+      const n1 = repo.nodes.find(n => n.id === foundPair[0].source);
+      const n2 = repo.nodes.find(n => n.id === foundPair[0].target);
+      const n3 = repo.nodes.find(n => n.id === foundPair[1].target);
+      if (n1 && n2 && n3) {
+        flowChain = [
+          { step: '1. Upstream Invoker', label: n1.label, path: n1.filePath, tag: n1.type },
+          { step: '2. Intermediary Component', label: n2.label, path: n2.filePath, tag: n2.type },
+          { step: '3. Downstream Target', label: n3.label, path: n3.filePath, tag: n3.type },
+        ];
+      }
+    }
+
+    if (flowChain.length === 0 && repo.nodes.length >= 3) {
+      const topConnected = [...repo.nodes]
+        .filter(n => n.type !== 'commit')
+        .sort((a, b) => {
+          const aCount = repo.edges.filter(e => e.source === a.id || e.target === a.id).length;
+          const bCount = repo.edges.filter(e => e.source === b.id || e.target === b.id).length;
+          return bCount - aCount;
+        })
+        .slice(0, 3);
+      flowChain = topConnected.map((n, i) => ({
+        step: `${i + 1}. Core ${n.type.toUpperCase()}`,
+        label: n.label,
+        path: n.filePath,
+        tag: n.type,
+      }));
+    }
+  }
+
+  if (flowChain.length === 0) {
+    flowChain = [
+      { step: '1. Entry Token', label: 'src/auth/jwt.ts', path: 'src/auth/jwt.ts', tag: 'file' },
+      { step: '2. Guard Layer', label: 'src/middleware/authMiddleware.ts', path: 'src/middleware/authMiddleware.ts', tag: 'module' },
+      { step: '3. Controller', label: 'src/controllers/checkoutController.ts', path: 'src/controllers/checkoutController.ts', tag: 'class' },
+    ];
+  }
+
+  // Real Knowledge Gaps calculation
+  const testEdges = repo.edges.filter(e => e.type === 'tests');
+  const testedNodeIds = new Set(testEdges.map(e => e.target));
+  const detectedGaps: Array<{ title: string; desc: string; severity: 'High' | 'Medium'; path: string }> = [];
+
+  if (repo.isDemo) {
+    detectedGaps.push(
+      {
+        title: 'Missing ADR: Token Rotation',
+        desc: 'Key rotation logic was introduced in commit 7a8f9c without an ADR specifying fallback validation.',
+        severity: 'High',
+        path: 'src/auth/jwt.ts',
+      },
+      {
+        title: 'Untested Gateway Headers',
+        desc: 'gateway.config.json configures claim forwarding without an automated contract test.',
+        severity: 'Medium',
+        path: 'config/gateway.config.json',
+      }
+    );
+  } else {
+    for (const node of repo.nodes) {
+      if ((node.type === 'file' || node.type === 'function') && !node.label.includes('test')) {
+        const isTested = testedNodeIds.has(node.id);
+        if (!isTested && (node.metadata?.isExported || node.type === 'file')) {
+          detectedGaps.push({
+            title: `Untested Symbol: ${node.label}`,
+            desc: `${node.label} in ${node.filePath || 'source'} has no detected automated test suite.`,
+            severity: 'High',
+            path: node.filePath || '',
+          });
+          if (detectedGaps.length >= 2) break;
+        }
+      }
+      if (node.type === 'config' && (!node.description || node.description.length < 20)) {
+        detectedGaps.push({
+          title: `Undocumented Config: ${node.label}`,
+          desc: `Configuration file ${node.label} lacks architectural documentation or schema specification.`,
+          severity: 'Medium',
+          path: node.filePath || '',
+        });
+        if (detectedGaps.length >= 2) break;
+      }
+    }
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-16">
@@ -287,6 +412,179 @@ export default function DashboardOverviewPage() {
         </div>
       </section>
 
+      {/* Autonomous Engineering & Risk Intelligence Suite */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between px-1">
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-blue-600" />
+              Autonomous Engineering Suite
+            </h2>
+            <p className="text-xs text-text-secondary">
+              Autonomous reasoning agents powered by AST parsing, graph dependency traversal, and Sarvam AI 105B.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Autonomous Investigator */}
+          <Link href="/investigator" className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs hover:shadow-card hover:border-emerald-300 transition-all flex flex-col justify-between group">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold">
+                  <Bot className="w-5 h-5 stroke-[2]" />
+                </div>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  Autonomous Agent
+                </span>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  Autonomous Engineering Investigator
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Provide high-level goals. The agent audits topology, calculates risk metrics, and synthesizes findings.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-emerald-600">
+              <span>Execute Risk Audit</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
+
+          {/* Change Simulator */}
+          <Link href="/simulator" className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs hover:shadow-card hover:border-blue-300 transition-all flex flex-col justify-between group">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold">
+                  <Sparkles className="w-5 h-5 stroke-[2]" />
+                </div>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                  Pre-Change
+                </span>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-700 transition-colors">
+                  What-If Change Simulator
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Describe a proposed code refactor in plain English. Models blast radius and generates a step-by-step plan.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-blue-600">
+              <span>Simulate Blast Radius</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
+
+          {/* PR Risk Reviewer */}
+          <Link href="/pr-reviewer" className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs hover:shadow-card hover:border-violet-300 transition-all flex flex-col justify-between group">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="w-9 h-9 rounded-xl bg-violet-500/10 text-violet-600 flex items-center justify-center font-bold">
+                  <GitPullRequest className="w-5 h-5 stroke-[2]" />
+                </div>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200">
+                  Pre-Merge
+                </span>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 group-hover:text-violet-700 transition-colors">
+                  AI Pull Request Risk Reviewer
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Cross-references PR diffs with the dependency graph to flag breaking contracts and untested changes.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-violet-600">
+              <span>Review Pull Request</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
+
+          {/* Test Gap Finder */}
+          <Link href="/test-gaps" className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs hover:shadow-card hover:border-amber-300 transition-all flex flex-col justify-between group">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
+                  <TestTube2 className="w-5 h-5 stroke-[2]" />
+                </div>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                  Test Audit
+                </span>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 group-hover:text-amber-700 transition-colors">
+                  Test Gap & Failure Path Finder
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Discovers critical execution paths lacking tests, explains why they matter, and generates test suites.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-amber-600">
+              <span>Discover Test Gaps</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
+
+          {/* Architecture Health Score */}
+          <Link href="/architecture-health" className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs hover:shadow-card hover:border-blue-300 transition-all flex flex-col justify-between group">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold">
+                  <Activity className="w-5 h-5 stroke-[2]" />
+                </div>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                  Explainable
+                </span>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-700 transition-colors">
+                  Explainable Architecture Health
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Derived from coupling control, circular cycle detection, test coverage, and documentation metrics.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-blue-600">
+              <span>Audit Health Score</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
+
+          {/* Ask Why */}
+          <Link href="/ask" className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs hover:shadow-card hover:border-purple-300 transition-all flex flex-col justify-between group">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center font-bold">
+                  <HelpCircle className="w-5 h-5 stroke-[2]" />
+                </div>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                  Open-Ended Q&A
+                </span>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 group-hover:text-purple-700 transition-colors">
+                  Ask Why Codebase Intelligence
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Ask open-ended engineering questions about any function, module, test, or commit in the codebase.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-purple-600">
+              <span>Ask a Question</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
+        </div>
+      </section>
+
       {/* 3. Main Editorial Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column (8 cols): Architecture Flow & Recent Changes */}
@@ -304,7 +602,7 @@ export default function DashboardOverviewPage() {
                   </h2>
                 </div>
                 <p className="text-xs sm:text-sm text-text-secondary">
-                  How components in <span className="font-semibold text-text-primary">commerce-core</span> connect, authenticate, and call one another.
+                  How components in <span className="font-semibold text-text-primary">{repo.repoName}</span> connect, authenticate, and call one another.
                 </p>
               </div>
 

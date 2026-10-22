@@ -18,7 +18,10 @@ export type EdgeType =
   | 'tests' 
   | 'configures' 
   | 'co_changed' 
-  | 'supersedes';
+  | 'supersedes'
+  | 'defines'
+  | 'depends_on'
+  | 'modifies';
 
 export interface GraphNode {
   id: string;
@@ -47,6 +50,15 @@ export interface GraphEdge {
   evidence?: EvidenceSource[];
 }
 
+export interface IndexingStatus {
+  status: 'idle' | 'indexing' | 'completed' | 'failed';
+  progress: number;
+  currentStep?: string;
+  filesProcessed?: number;
+  totalFiles?: number;
+  error?: string;
+}
+
 export interface KnowledgeGraph {
   repoId: string;
   repoName: string;
@@ -54,4 +66,8 @@ export interface KnowledgeGraph {
   edges: GraphEdge[];
   updatedAt: string;
   isDemo?: boolean;
+  branch?: string;
+  commitSha?: string;
+  primaryLanguage?: string;
+  indexingStatus?: IndexingStatus;
 }

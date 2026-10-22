@@ -27,10 +27,15 @@ export async function GET(request: NextRequest) {
     from: params.get('from') || undefined,
     to: params.get('to') || undefined,
   };
+  const components = graph.nodes
+    .filter((node) => node.type !== 'commit')
+    .map((node) => ({ id: node.id, label: `${node.label} · ${node.filePath || ''}` }));
+
   return NextResponse.json({
     repoId: graph.repoId,
     repoName: graph.repoName,
     isDemoData: graph.isDemo ?? false,
     events: buildDecisionTimeline(graph, filters),
+    components,
   });
 }

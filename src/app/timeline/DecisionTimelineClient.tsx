@@ -59,7 +59,7 @@ const STATUS_BORDER: Record<DecisionTimelineStatus, string> = {
   unresolved:            'border-l-gray-400',
 };
 
-interface TimelinePayload { repoId: string; repoName: string; isDemoData: boolean; events: DecisionTimelineEvent[]; }
+interface TimelinePayload { repoId: string; repoName: string; isDemoData: boolean; events: DecisionTimelineEvent[]; components?: Array<{ id: string; label: string }>; }
 
 export function DecisionTimelineClient() {
   const [payload, setPayload] = useState<TimelinePayload | null>(null);

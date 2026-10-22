@@ -16,46 +16,28 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { SAMPLE_REPORT_JWT_REFACTOR } from '@/lib/reports/sample-report-data';
+
 
 export function KnowledgeGapsClient() {
-  const gapsData = SAMPLE_REPORT_JWT_REFACTOR.knowledgeGaps;
+  const [activeRepoName, setActiveRepoName] = useState('acme/commerce-core');
   const [filterSeverity, setFilterSeverity] = useState<'all' | 'high' | 'medium'>('all');
-
-  const [gaps, setGaps] = useState<any[]>([
-    {
-      id: 'gap-jwt-adr',
-      title: 'Missing ADR: JWKS Key Rotation Fallback',
-      component: 'src/auth/jwt.ts',
-      filePath: 'src/auth/jwt.ts',
-      rule: 'Undocumented Architectural Decision',
-      severity: 'high' as const,
-      description: 'Key rotation was introduced in commit 7a8f9c without documenting failure mode fallback behavior.',
-      developerImpact: 'Engineers on-call cannot confirm if fallback to secondary key is intentional or a security bypass.',
-      suggestedRemediation: 'Author docs/adr/0014-jwks-rotation-fallback.md documenting expected cache timeout and RS256 rotation failure policy.',
-    },
-    {
-      id: 'gap-gateway-test',
-      title: 'Untested Gateway Header Pass-through',
-      component: 'config/gateway.config.json',
-      filePath: 'config/gateway.config.json',
-      rule: 'Untested Contract Dependency',
-      severity: 'medium' as const,
-      description: 'gateway.config.json references auth header forwarding to internal microservices, but no contract integration test validates headers.',
-      developerImpact: 'Changes to auth headers can silently drop claims without triggering test failures during CI.',
-      suggestedRemediation: 'Add an integration contract test suite in tests/gateway-auth.test.ts asserting header preservation across routes.',
-    },
-  ]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [gaps, setGaps] = useState<any[]>([]);
 
   useEffect(() => {
+    setIsLoading(true);
     fetch('/api/gaps')
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data.gaps) && data.gaps.length > 0) {
+        if (data.repoName) {
+          setActiveRepoName(data.repoName);
+        }
+        if (Array.isArray(data.gaps)) {
           setGaps(data.gaps);
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
   }, []);
 
   const filteredGaps = filterSeverity === 'all' 
@@ -64,6 +46,8 @@ export function KnowledgeGapsClient() {
 
   const highCount = gaps.filter(g => g.severity === 'high').length;
   const mediumCount = gaps.filter(g => g.severity === 'medium').length;
+  const debtScore = Math.min(100, Math.round((highCount * 25 + mediumCount * 12)));
+  const debtTier = debtScore > 50 ? 'Elevated Debt' : debtScore > 15 ? 'Moderate Debt' : 'Healthy';
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-16">
@@ -86,7 +70,7 @@ export function KnowledgeGapsClient() {
             </div>
             <p className="mt-1 text-slate-300 text-sm leading-relaxed max-w-xl">
               Blind spots, undocumented decisions, and test omissions detected in{' '}
-              <span className="font-bold text-white underline decoration-amber-400/60 underline-offset-2">acme/commerce-core</span>.
+              <span className="font-bold text-white underline decoration-amber-400/60 underline-offset-2">{activeRepoName}</span>.
             </p>
           </div>
         </div>
@@ -113,19 +97,19 @@ export function KnowledgeGapsClient() {
                 fill="none"
                 stroke="#F59E0B"
                 strokeWidth="8"
-                strokeDasharray={`${(38 / 100) * 314} 314`}
+                strokeDasharray={`${(debtScore / 100) * 314} 314`}
                 strokeLinecap="round"
                 transform="rotate(-90 56 56)"
               />
             </svg>
             <div className="flex flex-col items-center">
-              <span className="text-3xl font-extrabold text-gray-900 leading-none">38</span>
+              <span className="text-3xl font-extrabold text-gray-900 leading-none">{debtScore}</span>
               <span className="text-xs font-bold text-gray-500 leading-none mt-0.5">/100</span>
             </div>
           </div>
           <div className="text-center space-y-1.5">
             <div className="px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-extrabold uppercase tracking-wider inline-block border border-amber-300">
-              Moderate Debt
+              {debtTier}
             </div>
             <p className="text-xs text-gray-600 font-medium leading-snug">
               Calculated from commit history, missing ADR records, and test gaps.
