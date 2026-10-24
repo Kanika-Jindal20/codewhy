@@ -48,7 +48,7 @@ export async function analyzeChangeImpactInNeo4j(
       id: targetRow.id,
       label: targetRow.label,
       type: targetRow.type as any,
-      filePath: targetRow.filePath,
+      filePath: targetRow.filePath ?? '',
       description: targetRow.description,
     };
 
@@ -113,13 +113,10 @@ export async function analyzeChangeImpactInNeo4j(
         : 'transitive_consumer';
 
       const paths: DependencyPath[] = record.samplePaths.map(p => ({
-        sourceNodeId: record.id,
-        targetNodeId: targetNode.id,
+        nodes: [targetNode],
+        edges: [],
         hops: p.hops,
-        relationshipTypes: p.relationshipTypes as any,
-        evidenceCitations: [
-          `Neo4j Cypher Traversal: ${p.pathNodeLabels.join(' ➔ ')} (${p.hops} ${p.hops === 1 ? 'hop' : 'hops'})`,
-        ],
+        description: `Neo4j Cypher Traversal: ${p.pathNodeLabels.join(' ➔ ')} (${p.hops} ${p.hops === 1 ? 'hop' : 'hops'})`,
       }));
 
       affectedComponents.push({
@@ -127,7 +124,7 @@ export async function analyzeChangeImpactInNeo4j(
           id: record.id,
           label: record.label,
           type: record.type as any,
-          filePath: record.filePath,
+          filePath: record.filePath ?? '',
           description: record.description,
         },
         impactKind,
@@ -137,7 +134,8 @@ export async function analyzeChangeImpactInNeo4j(
           : `Indirectly depends on ${targetNode.label} via ${record.minHops}-hop execution path.`,
         isDirect,
         paths,
-        suggestedActions: isDirect
+        evidence: [],
+        recommendedChecks: isDirect
           ? [`Update call-site signature in ${record.filePath || record.label}`, `Run verification tests`]
           : [`Review transitive contract expectations`],
       });
@@ -151,7 +149,7 @@ export async function analyzeChangeImpactInNeo4j(
             id: t.id,
             label: t.label,
             type: 'test',
-            filePath: t.filePath,
+            filePath: t.filePath ?? '',
             description: `Automated test suite asserting ${targetNode.label}`,
           },
           impactKind: 'test_suite',
@@ -160,80 +158,97 @@ export async function analyzeChangeImpactInNeo4j(
           isDirect: true,
           paths: [
             {
-              sourceNodeId: t.id,
-              targetNodeId: targetNode.id,
+              nodes: [targetNode],
+              edges: [],
               hops: 1,
-              relationshipTypes: ['tests'],
-              evidenceCitations: [`Neo4j TESTS relationship: ${t.label} ➔ ${targetNode.label}`],
+              description: `Neo4j TESTS relationship: ${t.label} ➔ ${targetNode.label}`,
             },
           ],
-          suggestedActions: [`Execute test suite before and after PR merge`],
+          evidence: [],
+          recommendedChecks: [`Execute test suite before and after PR merge`],
         });
       }
     }
 
     // Calculate blast radius breakdown
-    const directCount = affectedComponents.filter(c => c.isDirect).length;
+    const directCount = affectedComponents.filter(c => c.isDirect && c.impactKind !== 'test_suite').length;
     const transitiveCount = affectedComponents.filter(c => !c.isDirect).length;
     const testCount = affectedComponents.filter(c => c.impactKind === 'test_suite').length;
 
-    const overallRisk =
+    const overallRisk: ImpactSeverity =
       directCount > 3 || changeCategory === 'breaking_interface'
-        ? 'critical'
+        ? 'high'
         : directCount > 0
-        ? 'elevated'
-        : 'moderate';
+        ? 'medium'
+        : 'low';
+
+    const relatedTests = affectedComponents.filter(c => c.impactKind === 'test_suite');
+    const configReferences = affectedComponents.filter(c => c.impactKind === 'config_consumer');
+    const directComponents = affectedComponents.filter(c => c.impactKind !== 'test_suite' && c.impactKind !== 'config_consumer');
+    const allPaths: DependencyPath[] = affectedComponents.flatMap(c => c.paths);
 
     return {
-      targetNode,
-      request,
-      blastRadius: {
-        directDependencies: directCount,
-        transitiveDependencies: transitiveCount,
-        testSuites: testCount,
-        totalAffected: affectedComponents.length,
+      id: `neo4j-impact-${Date.now()}`,
+      repoId,
+      analyzedAt: new Date().toISOString(),
+      selectedComponent: targetNode,
+      proposedChange: {
+        category: changeCategory,
+        description: proposedChangeDescription,
       },
-      threeWaySeparation: {
-        safeToModifyUnchanged: [
+      summary: {
+        overview: `Neo4j identified ${directCount} direct and ${transitiveCount} transitive callers for ${targetNode.label}.`,
+        totalAffected: affectedComponents.length,
+        directCount,
+        transitiveCount,
+        testCount,
+        configCount: configReferences.length,
+        coChangeCount: 0,
+      },
+      affectedComponents: directComponents,
+      dependencyPaths: allPaths,
+      relatedTests,
+      configReferences,
+      coChangedFiles: [],
+      pastRegressions: [],
+      potentialRisks: [
+        {
+          risk: `${directCount} direct callers may break`,
+          level: overallRisk,
+          rationale: `Neo4j graph traversal found ${directCount} direct and ${transitiveCount} transitive consumers of ${targetNode.label}.`,
+        },
+      ],
+      manualVerificationAreas: [
+        {
+          area: 'Direct callers',
+          checklist: [
+            `Verify all ${directCount} direct callers compile without type errors.`,
+            `Run linked test suites (${testCount} detected) against new behavior.`,
+          ],
+        },
+      ],
+      separation: {
+        staticAnalysis: directComponents.map(c => `${c.node.label} (${c.node.filePath || 'codebase'})`),
+        heuristicSuggestions: [
           'Components outside the computed caller path',
           'Independent service modules with decoupled interfaces',
         ],
-        requiresRefactoring: affectedComponents
-          .filter(c => c.isDirect && c.impactKind !== 'test_suite')
-          .map(c => `${c.node.label} (${c.node.filePath || 'codebase'})`),
-        testsNeedingUpdate: affectedComponents
-          .filter(c => c.impactKind === 'test_suite')
-          .map(c => `${c.node.label} (${c.node.filePath || 'test suite'})`),
+        aiInterpretations: [],
       },
-      affectedComponents,
-      confidenceScores: {
-        astGrounding: 1.0, // 100% verified graph relationships from Neo4j
-        traversalCompleteness: 0.95,
-        riskScore: overallRisk === 'critical' ? 0.88 : overallRisk === 'elevated' ? 0.65 : 0.35,
+      confidence: {
+        level: 'high' as const,
+        score: 0.95,
+        reasoning: '100% verified graph relationships from Neo4j Cypher traversal.',
+        limitations: [
+          'Dynamic dispatch and runtime polymorphism are not modelled.',
+          'Only relationships explicitly stored in the Neo4j graph are considered.',
+        ],
       },
-      risks: [
-        {
-          severity: overallRisk,
-          description: `Neo4j identified ${directCount} direct and ${transitiveCount} transitive callers for ${targetNode.label}.`,
-          mitigationRecommendation: `Stage changes with feature flags or deprecation warnings before breaking consumers.`,
-        },
+      limitations: [
+        'Dynamic dispatch and runtime polymorphism are not modelled.',
+        'Only relationships explicitly stored in the Neo4j graph are considered.',
       ],
-      preFlightChecklist: [
-        {
-          id: 'chk-neo4j-1',
-          task: `Verify all ${directCount} direct callers compile without type errors.`,
-          category: 'code',
-          required: true,
-        },
-        {
-          id: 'chk-neo4j-2',
-          task: `Run linked test suites (${testCount} detected) against new behavior.`,
-          category: 'test',
-          required: testCount > 0,
-        },
-      ],
-      analyzedAt: new Date().toISOString(),
-      neo4jGrounded: true,
+      isDemoData: false,
     };
   } catch (err) {
     console.error('[Neo4j Impact] Traversal failed:', err);

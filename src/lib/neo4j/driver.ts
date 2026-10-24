@@ -109,7 +109,7 @@ export async function runCypherQuery<T = Record<string, unknown>>(
     const result = await session.run(cypher, params);
     return result.records.map((rec) => {
       const obj: Record<string, unknown> = {};
-      for (const key of rec.keys) {
+      for (const key of rec.keys as string[]) {
         const val = rec.get(key);
         // Normalize neo4j Integers to plain numbers if applicable
         obj[key] = normalizeNeo4jValue(val);
@@ -126,7 +126,7 @@ export async function runCypherQuery<T = Record<string, unknown>>(
  */
 function normalizeNeo4jValue(val: unknown): unknown {
   if (val === null || val === undefined) return val;
-  if (neo4j.isInt(val)) return (val as neo4j.Integer).toNumber();
+  if (neo4j.isInt(val)) return (val as import("neo4j-driver").Integer).toNumber();
   if (Array.isArray(val)) return val.map(normalizeNeo4jValue);
   if (typeof val === 'object') {
     // If it's a Neo4j Node or Relationship with properties
