@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useActiveRepo } from '@/lib/repositories/active-repo-client';
 import Link from 'next/link';
 import {
   GitPullRequest,
@@ -22,32 +23,12 @@ import { Alert } from '@/components/ui/Alert';
 import { PullRequestRiskReview } from '@/lib/pr/pr-reviewer';
 
 export function PrReviewerClient() {
-  const [activeRepo, setActiveRepo] = useState<{ repoId: string; repoName: string }>({
-    repoId: 'commerce-core',
-    repoName: 'acme/commerce-core',
-  });
+  const { activeRepo } = useActiveRepo();
   const [prUrl, setPrUrl] = useState<string>('https://github.com/acme/commerce-core/pull/42');
   const [isReviewing, setIsReviewing] = useState<boolean>(false);
   const [review, setReview] = useState<PullRequestRiskReview | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function loadActive() {
-      try {
-        const res = await fetch('/api/repositories');
-        if (res.ok) {
-          const data = await res.json();
-          const active = data.repositories?.find((r: any) => r.isActive) || data.repositories?.[0];
-          if (active) {
-            setActiveRepo({ repoId: active.repoId, repoName: active.repoName });
-          }
-        }
-      } catch {
-        // Fallback
-      }
-    }
-    loadActive();
-  }, []);
 
   const handleReview = async () => {
     setIsReviewing(true);

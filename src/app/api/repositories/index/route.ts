@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      return NextResponse.json(
+      const res = NextResponse.json(
         {
           success: true,
           neo4jConnected: true,
@@ -131,10 +131,16 @@ export async function POST(req: NextRequest) {
         },
         { status: 200 }
       );
+      res.cookies.set('codewhy_active_repo_id', graphToSave!.repoId, {
+        path: '/',
+        maxAge: 31536000,
+        sameSite: 'lax',
+      });
+      return res;
     }
 
     // If Neo4j is not connected, repository is still saved locally and functional in CodeWhy's local AST engine
-    return NextResponse.json(
+    const res = NextResponse.json(
       {
         success: true,
         neo4jConnected: false,
@@ -150,6 +156,12 @@ export async function POST(req: NextRequest) {
       },
       { status: 200 }
     );
+    res.cookies.set('codewhy_active_repo_id', graphToSave!.repoId, {
+      path: '/',
+      maxAge: 31536000,
+      sameSite: 'lax',
+    });
+    return res;
   } catch (error: any) {
     console.error('[/api/repositories/index] Indexing error:', error);
     return NextResponse.json(

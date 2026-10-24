@@ -4,7 +4,8 @@ import { reviewPullRequestRisk } from '@/lib/pr/pr-reviewer';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { repoId, prUrl, prNumber, changedFiles } = body;
+    const repoId = body.repoId || req.cookies.get('codewhy_active_repo_id')?.value;
+    const { prUrl, prNumber, changedFiles } = body;
     const token = req.headers.get('x-github-token') || undefined;
 
     const review = await reviewPullRequestRisk({

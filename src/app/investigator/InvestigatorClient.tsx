@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useActiveRepo } from '@/lib/repositories/active-repo-client';
 import Link from 'next/link';
 import {
   Compass,
@@ -34,32 +35,12 @@ const GOAL_SUGGESTIONS = [
 ];
 
 export function InvestigatorClient() {
-  const [activeRepo, setActiveRepo] = useState<{ repoId: string; repoName: string }>({
-    repoId: 'commerce-core',
-    repoName: 'acme/commerce-core',
-  });
+  const { activeRepo } = useActiveRepo();
   const [goal, setGoal] = useState<string>(GOAL_SUGGESTIONS[0]);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [result, setResult] = useState<AutonomousInvestigationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function loadActive() {
-      try {
-        const res = await fetch('/api/repositories');
-        if (res.ok) {
-          const data = await res.json();
-          const active = data.repositories?.find((r: any) => r.isActive) || data.repositories?.[0];
-          if (active) {
-            setActiveRepo({ repoId: active.repoId, repoName: active.repoName });
-          }
-        }
-      } catch {
-        // Fallback
-      }
-    }
-    loadActive();
-  }, []);
 
   const handleRunInvestigation = async (selectedGoal = goal) => {
     setIsRunning(true);

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useActiveRepo } from '@/lib/repositories/active-repo-client';
 import Link from 'next/link';
 import {
   Zap,
@@ -30,33 +31,13 @@ const SAMPLE_CHANGES = [
 ];
 
 export function SimulatorClient() {
-  const [activeRepo, setActiveRepo] = useState<{ repoId: string; repoName: string }>({
-    repoId: 'commerce-core',
-    repoName: 'acme/commerce-core',
-  });
+  const { activeRepo } = useActiveRepo();
   const [description, setDescription] = useState<string>(SAMPLE_CHANGES[0]);
   const [approach, setApproach] = useState<string>('Approach A: Phased migration with backward-compatible facade');
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [result, setResult] = useState<ChangeSimulationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function loadActive() {
-      try {
-        const res = await fetch('/api/repositories');
-        if (res.ok) {
-          const data = await res.json();
-          const active = data.repositories?.find((r: any) => r.isActive) || data.repositories?.[0];
-          if (active) {
-            setActiveRepo({ repoId: active.repoId, repoName: active.repoName });
-          }
-        }
-      } catch {
-        // Fallback
-      }
-    }
-    loadActive();
-  }, []);
 
   const handleSimulate = async (customDesc = description) => {
     setIsSimulating(true);

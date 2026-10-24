@@ -3,6 +3,7 @@
 import React, { FormEvent, useState, useEffect } from 'react';
 import { ArrowUp, Bot, CircleHelp, FolderGit2, LoaderCircle, MessageSquareText, Sparkles, Zap } from 'lucide-react';
 import { SAMPLE_REPO_ECOMMERCE } from '@/lib/graph/sample-repo';
+import { useActiveRepo } from '@/lib/repositories/active-repo-client';
 import type { AskWhyResponse } from '@/types/ask';
 import { EvidenceCard } from '@/components/evidence/EvidenceCard';
 import { ReliabilityIndicator } from '@/components/evidence/ReliabilityIndicator';
@@ -32,28 +33,7 @@ export function AskWhyClient() {
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeRepo, setActiveRepo] = useState<{ repoId: string; repoName: string }>({
-    repoId: SAMPLE_REPO_ECOMMERCE.repoId,
-    repoName: SAMPLE_REPO_ECOMMERCE.repoName,
-  });
-
-  useEffect(() => {
-    async function loadActive() {
-      try {
-        const res = await fetch('/api/repositories');
-        if (res.ok) {
-          const data = await res.json();
-          const active = data.repositories?.find((r: any) => r.isActive) || data.repositories?.[0];
-          if (active) {
-            setActiveRepo({ repoId: active.repoId, repoName: active.repoName });
-          }
-        }
-      } catch {
-        // Fallback
-      }
-    }
-    loadActive();
-  }, []);
+  const { activeRepo } = useActiveRepo();
 
   async function submitQuestion(value = question) {
     const trimmed = value.trim();

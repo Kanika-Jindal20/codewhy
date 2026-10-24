@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams;
     const userId = req.headers.get('x-user-id') || CURRENT_USER_ID;
-    const repoId = sp.get('repoId') || undefined;
+    const repoId = sp.get('repoId') || req.cookies.get('codewhy_active_repo_id')?.value || undefined;
 
     const investigations = investigationStore.list(userId, { repoId });
     const realReports: EngineeringDecisionReport[] = investigations.map(inv =>

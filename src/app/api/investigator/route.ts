@@ -4,7 +4,8 @@ import { runAutonomousInvestigation } from '@/lib/investigator/autonomous-engine
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { repoId, goal } = body;
+    const repoId = body.repoId || req.cookies.get('codewhy_active_repo_id')?.value;
+    const { goal } = body;
 
     const result = await runAutonomousInvestigation(
       repoId,

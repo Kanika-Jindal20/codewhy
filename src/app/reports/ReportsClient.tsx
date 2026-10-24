@@ -25,8 +25,10 @@ import { ExportPdfModal } from '@/components/reports/ExportPdfModal';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import Link from 'next/link';
+import { useActiveRepo } from '@/lib/repositories/active-repo-client';
 
 export const ReportsClient: React.FC = () => {
+  const { activeRepo } = useActiveRepo();
   const [reports, setReports] = useState<EngineeringDecisionReport[]>([
     SAMPLE_REPORT_JWT_REFACTOR,
     SAMPLE_REPORT_MINIMAL,
@@ -36,7 +38,7 @@ export const ReportsClient: React.FC = () => {
   useEffect(() => {
     async function loadReports() {
       try {
-        const res = await fetch('/api/reports');
+        const res = await fetch(`/api/reports?repoId=${encodeURIComponent(activeRepo.repoId)}`);
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data.reports) && data.reports.length > 0) {
@@ -49,7 +51,7 @@ export const ReportsClient: React.FC = () => {
       }
     }
     loadReports();
-  }, []);
+  }, [activeRepo.repoId]);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   const handleOpenExport = (report: EngineeringDecisionReport) => {

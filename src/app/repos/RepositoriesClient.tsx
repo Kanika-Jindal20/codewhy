@@ -28,6 +28,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Alert } from '@/components/ui/Alert';
+import { setActiveRepoClient } from '@/lib/repositories/active-repo-client';
 
 interface RegisteredRepo {
   repoId: string;
@@ -110,8 +111,8 @@ export function RepositoriesClient() {
           neo4jConnected: data.neo4jConnected,
           neo4jHelp: data.neo4jHelp,
         });
-        await loadRepositories();
-      } else {
+        if (data.repoId && data.repoName) { setActiveRepoClient({ repoId: data.repoId, repoName: data.repoName, branch: data.branch || 'main', isDemo: false }); }
+        await loadRepositories();} else {
         setIndexStatus({
           success: false,
           error: data.error || data.details || 'Failed to index repository.',
@@ -138,8 +139,8 @@ export function RepositoriesClient() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        await loadRepositories();
-      } else {
+        if (data.repoId && data.repoName) { setActiveRepoClient({ repoId: data.repoId, repoName: data.repoName, branch: data.branch || 'main', isDemo: false }); }
+        await loadRepositories();} else {
         alert(data.error || 'Failed to delete repository.');
       }
     } catch (err: unknown) {
@@ -157,6 +158,10 @@ export function RepositoriesClient() {
         body: JSON.stringify({ repoId }),
       });
       if (res.ok) {
+        const found = repos.find(r => r.repoId === repoId);
+        if (found) {
+          setActiveRepoClient({ repoId: found.repoId, repoName: found.repoName, branch: found.branch || 'main', isDemo: Boolean(found.isDemo) });
+        }
         await loadRepositories();
       }
     } catch (err) {

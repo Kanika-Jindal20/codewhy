@@ -4,7 +4,7 @@ import { getRepositoryGraph, getActiveRepositoryGraph } from '@/lib/graph/graph-
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams;
-    const repoId = sp.get('repoId');
+    const repoId = sp.get('repoId') || req.cookies.get('codewhy_active_repo_id')?.value;
     const graph = repoId ? getRepositoryGraph(repoId) || getActiveRepositoryGraph() : getActiveRepositoryGraph();
 
     const gaps: Array<{

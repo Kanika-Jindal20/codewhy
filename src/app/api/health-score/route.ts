@@ -4,7 +4,7 @@ import { calculateArchitectureHealth } from '@/lib/health/health-score';
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams;
-    const repoId = sp.get('repoId') || undefined;
+    const repoId = sp.get('repoId') || req.cookies.get('codewhy_active_repo_id')?.value || undefined;
 
     const report = calculateArchitectureHealth(repoId);
     return NextResponse.json(report, { status: 200 });

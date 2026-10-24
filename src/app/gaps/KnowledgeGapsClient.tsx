@@ -16,29 +16,27 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { useActiveRepo } from '@/lib/repositories/active-repo-client';
 
 
 export function KnowledgeGapsClient() {
-  const [activeRepoName, setActiveRepoName] = useState('acme/commerce-core');
+  const { activeRepo } = useActiveRepo();
   const [filterSeverity, setFilterSeverity] = useState<'all' | 'high' | 'medium'>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [gaps, setGaps] = useState<any[]>([]);
 
   useEffect(() => {
     setIsLoading(true);
-    fetch('/api/gaps')
+    fetch(`/api/gaps?repoId=${encodeURIComponent(activeRepo.repoId)}`)
       .then(res => res.json())
       .then(data => {
-        if (data.repoName) {
-          setActiveRepoName(data.repoName);
-        }
         if (Array.isArray(data.gaps)) {
           setGaps(data.gaps);
         }
       })
       .catch(() => {})
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [activeRepo.repoId]);
 
   const filteredGaps = filterSeverity === 'all' 
     ? gaps 
@@ -70,7 +68,7 @@ export function KnowledgeGapsClient() {
             </div>
             <p className="mt-1 text-slate-300 text-sm leading-relaxed max-w-xl">
               Blind spots, undocumented decisions, and test omissions detected in{' '}
-              <span className="font-bold text-white underline decoration-amber-400/60 underline-offset-2">{activeRepoName}</span>.
+              <span className="font-bold text-white underline decoration-amber-400/60 underline-offset-2">{activeRepo.repoName}</span>.
             </p>
           </div>
         </div>

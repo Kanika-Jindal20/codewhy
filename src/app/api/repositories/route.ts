@@ -61,15 +61,23 @@ export async function POST(req: NextRequest) {
     return errorResponse(
       'INTERNAL_ERROR',
       'An unexpected error occurred during repository lookup.',
-      64
+      500
     );
   }
 }
 
-export async function GET() {
-  const { getAllRepositories } = await import('@/lib/graph/graph-store');
+export async function GET(req: NextRequest) {
+  const { getAllRepositories, setActiveRepositoryId, getActiveRepositoryId } = await import('@/lib/graph/graph-store');
   const { isNeo4jConfigured } = await import('@/lib/neo4j/config');
   const { verifyNeo4jConnection } = await import('@/lib/neo4j/driver');
+
+  // Check active repo cookie or header
+  const cookieRepoId = req.cookies.get('codewhy_active_repo_id')?.value || req.headers.get('x-active-repo-id');
+  if (cookieRepoId) {
+    try {
+      setActiveRepositoryId(cookieRepoId);
+    } catch {}
+  }
 
   let neo4jHealth: { connected: boolean; serverInfo?: string; error?: string } = {
     connected: false,
@@ -84,6 +92,7 @@ export async function GET() {
 
   return NextResponse.json({
     repositories: repos,
+    activeRepoId: getActiveRepositoryId(),
     neo4j: {
       isConfigured: isNeo4jConfigured(),
       connected: neo4jHealth.connected,
@@ -106,7 +115,14 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: `Repository '${repoId}' not found.` }, { status: 404 });
     }
     setActiveRepositoryId(repoId);
-    return NextResponse.json({ success: true, activeRepoId: repoId }, { status: 200 });
+
+    const res = NextResponse.json({ success: true, activeRepoId: repoId }, { status: 200 });
+    res.cookies.set('codewhy_active_repo_id', repoId, {
+      path: '/',
+      maxAge: 31536000,
+      sameSite: 'lax',
+    });
+    return res;
   } catch {
     return NextResponse.json({ error: 'Failed to switch active repository.' }, { status: 500 });
   }
@@ -121,18 +137,16 @@ export async function DELETE(req: NextRequest) {
       repoId = body?.repoId;
     }
     if (!repoId || typeof repoId !== 'string') {
-      return NextResponse.json({ error: 'repoId is required to delete a repository.' }, { status: 400 });
+      return NextResponse.json({ error: 'repoId is required to delete.' }, { status: 400 });
     }
-
     const { deleteRepository } = await import('@/lib/graph/graph-store');
     const result = deleteRepository(repoId);
-
     if (!result.success) {
       return NextResponse.json({ error: result.error || 'Failed to delete repository.' }, { status: 400 });
     }
-
     return NextResponse.json({ success: true, deletedRepoId: repoId }, { status: 200 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Internal server error deleting repository.' }, { status: 500 });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to delete repository.';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

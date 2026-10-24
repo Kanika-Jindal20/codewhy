@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CalendarClock, GitCommitHorizontal, History, LoaderCircle, Search } from 'lucide-react';
 import { SAMPLE_REPO_ECOMMERCE } from '@/lib/graph/sample-repo';
+import { useActiveRepo } from '@/lib/repositories/active-repo-client';
 import type { DecisionTimelineEvent, DecisionTimelineStatus } from '@/types/timeline';
 import type { EvidenceSource } from '@/types/evidence';
 import { EvidenceCard } from '@/components/evidence/EvidenceCard';
@@ -72,17 +73,8 @@ export function DecisionTimelineClient() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeRepoId, setActiveRepoId] = useState<string>(SAMPLE_REPO_ECOMMERCE.repoId);
-
-  useEffect(() => {
-    fetch('/api/repositories')
-      .then(r => r.json())
-      .then(d => {
-        const active = d.repositories?.find((r: any) => r.isActive) || d.repositories?.[0];
-        if (active) setActiveRepoId(active.repoId);
-      })
-      .catch(() => {});
-  }, []);
+  const { activeRepo } = useActiveRepo();
+  const activeRepoId = activeRepo.repoId;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -115,11 +107,12 @@ export function DecisionTimelineClient() {
   const selected = visibleEvents.find((event) => event.id === selectedId) ?? visibleEvents[0];
   const related = selected?.relatedEventId ? payload?.events.find((event) => event.id === selected.relatedEventId) : undefined;
   const repo = {
-    repoName: payload?.repoName || SAMPLE_REPO_ECOMMERCE.repoName,
-    isDemo: payload ? payload.isDemoData : Boolean(SAMPLE_REPO_ECOMMERCE.isDemo),
-    nodes: SAMPLE_REPO_ECOMMERCE.nodes,
+    repoName: payload?.repoName || activeRepo.repoName,
+    isDemo: payload ? payload.isDemoData : Boolean(activeRepo.isDemo),
   };
-  const components = repo.nodes.filter((node) => node.type !== 'commit').map((node) => ({ id: node.id, label: `${node.label} · ${node.filePath}` }));
+  const components = (payload?.components && payload.components.length > 0)
+    ? payload.components
+    : [];
 
   return (
     <div className="font-['Inter',sans-serif] max-w-7xl mx-auto space-y-6 pb-12">

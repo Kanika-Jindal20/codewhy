@@ -4,7 +4,8 @@ import { simulateProposedChange } from '@/lib/simulator/change-simulator';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { repoId, changeDescription, proposedApproach, targetSymbolHint, maxTransitiveDepth } = body;
+    const repoId = body.repoId || req.cookies.get('codewhy_active_repo_id')?.value;
+    const { changeDescription, proposedApproach, targetSymbolHint, maxTransitiveDepth } = body;
 
     if (!changeDescription || typeof changeDescription !== 'string') {
       return NextResponse.json(

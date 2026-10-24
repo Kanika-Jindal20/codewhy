@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useActiveRepo } from '@/lib/repositories/active-repo-client';
 import Link from 'next/link';
 import {
   ShieldCheck,
@@ -22,10 +23,7 @@ import { Alert } from '@/components/ui/Alert';
 import { ArchitectureHealthReport } from '@/lib/health/health-score';
 
 export function ArchitectureHealthClient() {
-  const [activeRepo, setActiveRepo] = useState<{ repoId: string; repoName: string }>({
-    repoId: 'commerce-core',
-    repoName: 'acme/commerce-core',
-  });
+  const { activeRepo } = useActiveRepo();
   const [report, setReport] = useState<ArchitectureHealthReport | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,23 +43,6 @@ export function ArchitectureHealthClient() {
     }
   };
 
-  useEffect(() => {
-    async function loadActive() {
-      try {
-        const res = await fetch('/api/repositories');
-        if (res.ok) {
-          const repoData = await res.json();
-          const active = repoData.repositories?.find((r: any) => r.isActive) || repoData.repositories?.[0];
-          if (active) {
-            setActiveRepo({ repoId: active.repoId, repoName: active.repoName });
-          }
-        }
-      } catch {
-        // Fallback
-      }
-    }
-    loadActive();
-  }, []);
 
   useEffect(() => {
     loadHealth();

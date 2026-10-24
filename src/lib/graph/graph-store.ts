@@ -4,23 +4,44 @@ import { SAMPLE_REPO_ECOMMERCE } from './sample-repo';
 
 export { SAMPLE_REPO_ECOMMERCE };
 
-// Registered repositories store with file persistence
-const persistedRepos = readDataFile<Record<string, KnowledgeGraph>>('repositories.json', {});
-const persistedActive = readDataFile<{ activeRepoId?: string }>('active-repo.json', {});
+// In-memory repositories cache with persistent backing
 const repositories: Map<string, KnowledgeGraph> = new Map([
   [SAMPLE_REPO_ECOMMERCE.repoId, SAMPLE_REPO_ECOMMERCE],
-  ...Object.entries(persistedRepos),
 ]);
 
-let activeRepoId: string = persistedActive.activeRepoId && repositories.has(persistedActive.activeRepoId)
-  ? persistedActive.activeRepoId
-  : Object.keys(persistedRepos)[0] || SAMPLE_REPO_ECOMMERCE.repoId;
+let activeRepoId: string = SAMPLE_REPO_ECOMMERCE.repoId;
+
+/**
+ * Re-synchronizes in-memory map from persistent storage (/tmp or data/)
+ * to handle serverless cross-invocation synchronization.
+ */
+function refreshStoreFromDisk(): void {
+  try {
+    const persistedRepos = readDataFile<Record<string, KnowledgeGraph>>('repositories.json', {});
+    for (const [id, g] of Object.entries(persistedRepos)) {
+      if (g && g.repoId) {
+        repositories.set(id, g);
+      }
+    }
+    const persistedActive = readDataFile<{ activeRepoId?: string }>('active-repo.json', {});
+    if (persistedActive.activeRepoId && repositories.has(persistedActive.activeRepoId)) {
+      activeRepoId = persistedActive.activeRepoId;
+    }
+  } catch {
+    // Fail safe
+  }
+}
+
+// Initial sync
+refreshStoreFromDisk();
 
 export function getActiveRepositoryId(): string {
+  refreshStoreFromDisk();
   return activeRepoId;
 }
 
 export function setActiveRepositoryId(id: string): void {
+  refreshStoreFromDisk();
   if (repositories.has(id)) {
     activeRepoId = id;
     writeDataFile('active-repo.json', { activeRepoId });
@@ -28,12 +49,14 @@ export function setActiveRepositoryId(id: string): void {
 }
 
 export function getActiveRepositoryGraph(): KnowledgeGraph {
+  refreshStoreFromDisk();
   return repositories.get(activeRepoId) || SAMPLE_REPO_ECOMMERCE;
 }
 
 export function getRepositoryGraph(repoId?: string): KnowledgeGraph | undefined {
+  refreshStoreFromDisk();
   if (!repoId) return getActiveRepositoryGraph();
-  return repositories.get(repoId);
+  return repositories.get(repoId) || (repoId === SAMPLE_REPO_ECOMMERCE.repoId ? SAMPLE_REPO_ECOMMERCE : undefined);
 }
 
 export function getAllRepositories(): { 
@@ -48,6 +71,7 @@ export function getAllRepositories(): {
   commitSha?: string;
   primaryLanguage?: string;
 }[] {
+  refreshStoreFromDisk();
   return Array.from(repositories.values()).map(r => ({
     repoId: r.repoId,
     repoName: r.repoName,
@@ -63,6 +87,7 @@ export function getAllRepositories(): {
 }
 
 export function registerRepositoryGraph(graph: KnowledgeGraph): void {
+  refreshStoreFromDisk();
   repositories.set(graph.repoId, graph);
   activeRepoId = graph.repoId;
   const toPersist: Record<string, KnowledgeGraph> = {};
@@ -76,6 +101,7 @@ export function registerRepositoryGraph(graph: KnowledgeGraph): void {
 }
 
 export function deleteRepository(repoId: string): { success: boolean; error?: string } {
+  refreshStoreFromDisk();
   if (repoId === SAMPLE_REPO_ECOMMERCE.repoId) {
     return { success: false, error: 'Cannot delete the built-in demo repository.' };
   }

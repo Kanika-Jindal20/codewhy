@@ -27,7 +27,7 @@ const MAX_HOPS = 3;
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams;
-    const rawRepoId = sp.get('repoId')?.trim();
+    const rawRepoId = sp.get('repoId')?.trim() || req.cookies.get('codewhy_active_repo_id')?.value || req.headers.get('x-active-repo-id')?.trim();
     const nodeId = sp.get('nodeId')?.trim();
     const searchQuery = sp.get('search')?.trim();
     const hops = Math.min(parseInt(sp.get('hops') ?? '1', 10), MAX_HOPS);

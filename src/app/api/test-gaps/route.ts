@@ -4,7 +4,7 @@ import { analyzeTestGaps } from '@/lib/gaps/test-gap-engine';
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams;
-    const repoId = sp.get('repoId') || undefined;
+    const repoId = sp.get('repoId') || req.cookies.get('codewhy_active_repo_id')?.value || undefined;
 
     const result = await analyzeTestGaps(repoId);
     return NextResponse.json(result, { status: 200 });

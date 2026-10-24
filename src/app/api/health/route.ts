@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { isNeo4jConfigured } from '@/lib/neo4j/config';
 import { verifyNeo4jConnection } from '@/lib/neo4j/driver';
 import { isSarvamConfigured, getSarvamModel, getSarvamEndpoint } from '@/lib/sarvam/sarvam-client';
-import { getAllRepositories, getActiveRepositoryGraph } from '@/lib/graph/graph-store';
+import { getAllRepositories, getActiveRepositoryGraph, getRepositoryGraph } from '@/lib/graph/graph-store';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const timestamp = new Date().toISOString();
   let neo4jHealth: {
     connected: boolean;
@@ -32,7 +32,8 @@ export async function GET() {
   const sarvamEndpoint = getSarvamEndpoint();
 
   const repos = getAllRepositories();
-  const activeGraph = getActiveRepositoryGraph();
+  const cookieRepoId = req.cookies.get('codewhy_active_repo_id')?.value;
+  const activeGraph = cookieRepoId ? getRepositoryGraph(cookieRepoId) || getActiveRepositoryGraph() : getActiveRepositoryGraph();
 
   const status = {
     status: 'healthy',
@@ -45,19 +46,16 @@ export async function GET() {
         database: neo4jHealth.database,
         error: neo4jHealth.error,
       },
-      sarvamAI: {
+      sarvam: {
         configured: sarvamConfigured,
         model: sarvamModel,
         endpoint: sarvamEndpoint,
-        help: sarvamConfigured
-          ? 'Sarvam AI 105B reasoning engine active.'
-          : 'Set SARVAM_API_KEY in .env to activate real-time 105B LLM architectural reasoning.',
       },
-      github: {
-        tokenConfigured: Boolean(process.env.GITHUB_TOKEN && process.env.GITHUB_TOKEN.trim().length > 0),
-      },
-      repositories: {
-        totalIndexed: repos.length,
+    },
+    workspaces: {
+      totalRepositories: repos.length,
+      repositories: repos,
+      active: {
         activeRepoId: activeGraph.repoId,
         activeRepoName: activeGraph.repoName,
         activeNodeCount: activeGraph.nodes.length,

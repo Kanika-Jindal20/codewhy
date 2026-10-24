@@ -34,7 +34,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Lookup repository graph (falls back to active repo graph or default sample)
-    const graph = (repoId ? getRepositoryGraph(repoId) : undefined) || getActiveRepositoryGraph();
+    const targetRepoId = repoId || req.cookies.get('codewhy_active_repo_id')?.value;
+    const graph = (targetRepoId ? getRepositoryGraph(targetRepoId) : undefined) || getActiveRepositoryGraph();
 
     const request: ImpactAnalysisRequest = {
       repoId: graph.repoId,

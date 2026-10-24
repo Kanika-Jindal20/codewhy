@@ -9,7 +9,7 @@ const SOURCES: EvidenceSource['type'][] = ['file_span', 'commit', 'pull_request'
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
-  const repoId = params.get('repoId')?.trim();
+  const repoId = params.get('repoId')?.trim() || request.cookies.get('codewhy_active_repo_id')?.value;
   const graph = (repoId ? getRepositoryGraph(repoId) : undefined) || getActiveRepositoryGraph();
   if (!graph) return NextResponse.json({ error: 'That repository is not available in the current analysis.' }, { status: 404 });
   const rawStatus = params.get('status');

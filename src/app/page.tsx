@@ -1,4 +1,6 @@
-import React from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   FolderGit2, 
@@ -28,13 +30,33 @@ import {
   GitPullRequest,
   Activity,
 } from 'lucide-react';
-import { SAMPLE_REPO_ECOMMERCE, getActiveRepositoryGraph } from '@/lib/graph/graph-store';
+import { SAMPLE_REPO_ECOMMERCE } from '@/lib/graph/sample-repo';
+import { useActiveRepo } from '@/lib/repositories/active-repo-client';
+import { KnowledgeGraph } from '@/types/graph';
 import { COMMERCE_COMMIT_HISTORY } from '@/lib/impact/heuristics-engine';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 
 export default function DashboardOverviewPage() {
-  const repo = getActiveRepositoryGraph();
+  const { activeRepo } = useActiveRepo();
+  const [repo, setRepo] = useState<KnowledgeGraph>(SAMPLE_REPO_ECOMMERCE);
+
+  useEffect(() => {
+    let isCancelled = false;
+    async function loadGraph() {
+      try {
+        const res = await fetch(`/api/graph?repoId=${encodeURIComponent(activeRepo.repoId)}&limit=200`);
+        if (res.ok) {
+          const data = await res.json();
+          if (!isCancelled && data && Array.isArray(data.nodes) && data.nodes.length > 0) {
+            setRepo(data);
+          }
+        }
+      } catch {}
+    }
+    loadGraph();
+    return () => { isCancelled = true; };
+  }, [activeRepo.repoId]);
 
 
   // Exact metrics computed from real graph data
@@ -196,7 +218,7 @@ export default function DashboardOverviewPage() {
                 </span>
                 <span className="text-slate-400">·</span>
                 <span className="text-xs font-medium text-slate-300">
-                  Branch: <code className="font-semibold text-white font-mono bg-white/10 px-2 py-0.5 rounded">main</code>
+                  Branch: <code className="font-semibold text-white font-mono bg-white/10 px-2 py-0.5 rounded">{activeRepo.branch || repo.branch || 'main'}</code>
                 </span>
               </div>
 

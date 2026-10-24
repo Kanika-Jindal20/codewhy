@@ -15,6 +15,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { SAMPLE_REPO_ECOMMERCE } from '@/lib/graph/sample-repo';
+import { useActiveRepo } from '@/lib/repositories/active-repo-client';
 import { analyzeChangeImpact } from '@/lib/impact/impact-service';
 import { 
   ImpactAnalysisResult, 
@@ -38,8 +39,7 @@ import { EngineeringDecisionReport } from '@/types/report';
 import Link from 'next/link';
 
 export default function ImpactAnalysisPage() {
-  const [activeRepoId, setActiveRepoId] = useState<string>(SAMPLE_REPO_ECOMMERCE.repoId);
-  const [activeRepoName, setActiveRepoName] = useState<string>(SAMPLE_REPO_ECOMMERCE.repoName);
+  const { activeRepo } = useActiveRepo();
   const [availableNodes, setAvailableNodes] = useState<GraphNode[]>(SAMPLE_REPO_ECOMMERCE.nodes);
   const [selectedNode, setSelectedNode] = useState<GraphNode>(SAMPLE_REPO_ECOMMERCE.nodes[0]);
   const [changeCategory, setChangeCategory] = useState<ChangeCategory>('breaking_interface');
@@ -55,35 +55,33 @@ export default function ImpactAnalysisPage() {
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadActiveRepo() {
+    let isCancelled = false;
+    async function loadRepoGraph() {
       try {
-        const repoRes = await fetch('/api/repositories');
-        if (repoRes.ok) {
-          const repoData = await repoRes.json();
-          const active = repoData.repositories?.find((r: any) => r.isActive) || repoData.repositories?.[0];
-          if (active) {
-            setActiveRepoId(active.repoId);
-            setActiveRepoName(active.repoName);
-
-            const graphRes = await fetch(`/api/graph?repoId=${encodeURIComponent(active.repoId)}&limit=100`);
-            if (graphRes.ok) {
-              const graphData = await graphRes.json();
-              if (Array.isArray(graphData.nodes) && graphData.nodes.length > 0) {
-                setAvailableNodes(graphData.nodes);
-                const params = new URLSearchParams(window.location.search);
-                const targetId = params.get('targetNodeId');
-                const matched = targetId ? graphData.nodes.find((n: GraphNode) => n.id === targetId) : graphData.nodes[0];
-                if (matched) setSelectedNode(matched);
-              }
+        const graphRes = await fetch(`/api/graph?repoId=${encodeURIComponent(activeRepo.repoId)}&limit=100`);
+        if (graphRes.ok) {
+          const graphData = await graphRes.json();
+          if (!isCancelled && Array.isArray(graphData.nodes) && graphData.nodes.length > 0) {
+            setAvailableNodes(graphData.nodes);
+            const params = new URLSearchParams(window.location.search);
+            const targetId = params.get('targetNodeId');
+            const matched = targetId ? graphData.nodes.find((n: GraphNode) => n.id === targetId) : graphData.nodes[0];
+            if (matched) {
+              setSelectedNode(matched);
             }
+            if (activeRepo.repoId !== SAMPLE_REPO_ECOMMERCE.repoId) {
+              setChangeDescription(`Refactor ${matched?.label || 'core module'} to update function signatures and verify downstream consumers.`);
+            }
+            setAnalysisResult(null);
           }
         }
       } catch (err) {
         console.warn('Could not load repository graph nodes for impact analysis:', err);
       }
     }
-    loadActiveRepo();
-  }, []);
+    loadRepoGraph();
+    return () => { isCancelled = true; };
+  }, [activeRepo.repoId]);
 
   // Check URL query params for targetNodeId pre-selection (e.g. from Architecture Explorer)
   useEffect(() => {
@@ -108,7 +106,7 @@ export default function ImpactAnalysisPage() {
         body: JSON.stringify({
           title: `Pre-Change Impact: ${analysisResult.selectedComponent.label} (${analysisResult.proposedChange.category})`,
           repoId: analysisResult.repoId,
-          repoName: activeRepoName,
+          repoName: activeRepo.repoName,
           originalQuestion: `What is the blast radius and architectural risk of ${analysisResult.proposedChange.description}?`,
           initialAnswerSummary: `Evaluated ${analysisResult.summary.totalAffected} downstream components (${analysisResult.summary.directCount} direct, ${analysisResult.summary.transitiveCount} transitive).`,
           detailedFindings: analysisResult.potentialRisks.map(r => `${r.risk}: ${r.rationale}`),
@@ -140,8 +138,8 @@ export default function ImpactAnalysisPage() {
       version: '1.0.0',
       repository: {
         repoId: analysisResult.repoId,
-        repoName: activeRepoName,
-        repoUrl: 'https://github.com/acme/commerce-core',
+        repoName: activeRepo.repoName,
+        repoUrl: `https://github.com/${activeRepo.repoName}`,
         analyzedCommit: '7a8f9c2d1b',
         analyzedBranch: 'main',
         primaryLanguage: 'TypeScript',
@@ -200,7 +198,7 @@ export default function ImpactAnalysisPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          repoId: activeRepoId,
+          repoId: activeRepo.repoId,
           targetNodeId: selectedNode.id,
           changeCategory,
           proposedChangeDescription: changeDescription,
