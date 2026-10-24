@@ -57,7 +57,7 @@ describe('Sarvam AI Client Configuration & Validation', () => {
 
     const result = await querySarvamAI({
       question: 'Why is authentication checked on line 10?',
-      questionKind: 'why',
+      questionKind: 'code_explanation',
       evidence: sampleEvidence,
     });
 
@@ -113,7 +113,7 @@ describe('Sarvam AI Client Configuration & Validation', () => {
 
     const res = await querySarvamAI({
       question: 'Why does auth guard run first?',
-      questionKind: 'why',
+      questionKind: 'code_explanation',
       evidence: sampleEvidence,
       repoName: 'test-app',
     });
@@ -162,7 +162,7 @@ describe('Sarvam AI Client Configuration & Validation', () => {
 
     const res = await querySarvamAI({
       question: 'Testing fence cleanup',
-      questionKind: 'why',
+      questionKind: 'code_explanation',
       evidence: [],
     });
 

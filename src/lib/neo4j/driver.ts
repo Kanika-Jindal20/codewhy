@@ -1,4 +1,4 @@
-import neo4j, { Driver, Session, type Integer } from 'neo4j-driver';
+import neo4j, { Driver, Session } from 'neo4j-driver';
 import { getNeo4jConfig, isNeo4jConfigured } from './config';
 
 let driverInstance: Driver | null = null;
@@ -62,7 +62,7 @@ export async function verifyNeo4jConnection(): Promise<{
   let session: Session | null = null;
   try {
     session = driver.session({ database: config.database });
-    const result = await session.run('RETURN 1 AS ping, datetime() AS serverTime');
+    await session.run('RETURN 1 AS ping, datetime() AS serverTime');
     const serverInfo = await driver.getServerInfo();
 
     return {
@@ -83,6 +83,8 @@ export async function verifyNeo4jConnection(): Promise<{
     }
   }
 }
+
+export const verifyNeo4jConnectivity = verifyNeo4jConnection;
 
 /**
  * Safely executes a parameterized Cypher query with automatic session lifecycle management.
@@ -108,13 +110,11 @@ export async function runCypherQuery<T = Record<string, unknown>>(
   try {
     const result = await session.run(cypher, params);
     return result.records.map((rec) => {
-      const obj =  {} as Record<string, any>;
-      for (const key of rec.keys) {
-        // Normalize neo4j Integers to plain numbers if applicable
-        if(typeof key !== 'string')continue;
+      const obj: Record<string, unknown> = {};
+      for (const key of rec.keys as string[]) {
         const val = rec.get(key);
         obj[key] = normalizeNeo4jValue(val);
-        }
+      }
       return obj as T;
     });
   } finally {
@@ -127,7 +127,7 @@ export async function runCypherQuery<T = Record<string, unknown>>(
  */
 function normalizeNeo4jValue(val: unknown): unknown {
   if (val === null || val === undefined) return val;
-  if (neo4j.isInt(val)) return (val as Integer).toNumber();
+  if (neo4j.isInt(val)) return (val as import('neo4j-driver').Integer).toNumber();
   if (Array.isArray(val)) return val.map(normalizeNeo4jValue);
   if (typeof val === 'object') {
     // If it's a Neo4j Node or Relationship with properties
