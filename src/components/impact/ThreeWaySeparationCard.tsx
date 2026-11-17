@@ -16,44 +16,44 @@ export const ThreeWaySeparationCard: React.FC<ThreeWaySeparationProps> = ({
   aiInterpretations,
 }) => {
   return (
-    <div className="bg-white border border-app-border rounded-2xl p-6 sm:p-7 shadow-xs">
-      <div className="mb-5 pb-4 border-b border-app-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+    <div className="bg-white border border-border-default rounded-xl p-5 sm:p-6 shadow-xs">
+      <div className="mb-4 pb-3 border-b border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h3 className="text-base font-bold text-[#25324B]">
+          <h3 className="text-sm font-semibold text-ink-primary">
             Three-Way Intelligence Source Separation
           </h3>
-          <p className="text-xs text-text-secondary mt-0.5">
-            CodeWhy explicitly separates compiler-verified facts from statistical heuristics and AI explanations so engineers know what to trust.
+          <p className="text-xs text-ink-muted mt-0.5">
+            CodeWhy explicitly separates compiler-verified AST facts from statistical Git heuristics and LLM synthesis.
           </p>
         </div>
-        <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[#F8FAFC] text-text-secondary border border-app-border self-start sm:self-auto">
+        <span className="text-[11px] font-mono text-ink-faint px-2 py-0.5 rounded bg-surface-secondary border border-border-subtle self-start sm:self-auto">
           3-Tier Provenance
         </span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* 1. Statically Identified Relationships */}
-        <div className="bg-gradient-to-b from-[#F0FDF4] to-[#DCFCE7]/40 border border-[#86EFAC] rounded-2xl p-5 flex flex-col justify-between shadow-2xs hover:shadow-xs transition-shadow">
+        <div className="bg-surface-secondary border border-border-default rounded-lg p-4 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-2.5">
-              <span className="text-xs font-extrabold text-[#14532D] flex items-center gap-2">
-                <div className="w-7 h-7 rounded-xl bg-[#16A34A] text-white flex items-center justify-center shadow-2xs">
-                  <Cpu className="w-4 h-4 stroke-[2.5]" />
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-ink-primary flex items-center gap-2">
+                <div className="w-5 h-5 rounded bg-brand-emerald/10 text-brand-deep flex items-center justify-center">
+                  <Cpu className="w-3.5 h-3.5" />
                 </div>
                 Static AST Analysis
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-white text-[#16A34A] border border-[#86EFAC] shadow-2xs uppercase tracking-wider">
-                100% Grounded
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-brand-emerald/10 text-brand-deep border border-brand-emerald/20 uppercase tracking-wider">
+                AST Grounded
               </span>
             </div>
-            <p className="text-[11px] text-[#166534] mb-3.5 leading-relaxed font-medium">
-              Extracted directly from code syntax trees, import declarations, and verified call sites.
+            <p className="text-[11px] text-ink-muted mb-3 leading-relaxed">
+              Extracted directly from code syntax trees, import declarations, and call sites.
             </p>
-            <ul className="space-y-2 text-xs text-[#14532D]">
+            <ul className="space-y-1.5 text-xs text-ink-secondary">
               {staticAnalysis.map((item, idx) => (
-                <li key={idx} className="flex items-start gap-2 bg-white/70 p-2 rounded-lg border border-[#BBF7D0]">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#16A34A] shrink-0 mt-0.5" />
-                  <span className="leading-snug font-medium">{item}</span>
+                <li key={idx} className="flex items-start gap-2 bg-white p-2 rounded border border-border-subtle">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-brand-deep shrink-0 mt-0.5" />
+                  <span className="leading-snug">{item}</span>
                 </li>
               ))}
             </ul>
@@ -61,27 +61,27 @@ export const ThreeWaySeparationCard: React.FC<ThreeWaySeparationProps> = ({
         </div>
 
         {/* 2. Heuristic Suggestions */}
-        <div className="bg-gradient-to-b from-[#FAF5FF] to-[#F3E8FF]/40 border border-[#D8B4FE] rounded-2xl p-5 flex flex-col justify-between shadow-2xs hover:shadow-xs transition-shadow">
+        <div className="bg-surface-secondary border border-border-default rounded-lg p-4 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-2.5">
-              <span className="text-xs font-extrabold text-[#581C87] flex items-center gap-2">
-                <div className="w-7 h-7 rounded-xl bg-[#8B5CF6] text-white flex items-center justify-center shadow-2xs">
-                  <Compass className="w-4 h-4 stroke-[2.5]" />
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-ink-primary flex items-center gap-2">
+                <div className="w-5 h-5 rounded bg-purple-100 text-purple-700 flex items-center justify-center">
+                  <Compass className="w-3.5 h-3.5" />
                 </div>
-                History & Heuristics
+                Git Heuristics
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-white text-[#8B5CF6] border border-[#D8B4FE] shadow-2xs uppercase tracking-wider">
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-purple-50 text-purple-700 border border-purple-200 uppercase tracking-wider">
                 Statistical
               </span>
             </div>
-            <p className="text-[11px] text-[#6B21A8] mb-3.5 leading-relaxed font-medium">
-              Mined from Git commit co-changes, convention-based test suites, and issue logs.
+            <p className="text-[11px] text-ink-muted mb-3 leading-relaxed">
+              Mined from Git commit co-changes, convention-based test suites, and commit logs.
             </p>
-            <ul className="space-y-2 text-xs text-[#581C87]">
+            <ul className="space-y-1.5 text-xs text-ink-secondary">
               {heuristicSuggestions.map((item, idx) => (
-                <li key={idx} className="flex items-start gap-2 bg-white/70 p-2 rounded-lg border border-[#E9D5FF]">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#8B5CF6] shrink-0 mt-0.5" />
-                  <span className="leading-snug font-medium">{item}</span>
+                <li key={idx} className="flex items-start gap-2 bg-white p-2 rounded border border-border-subtle">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-purple-600 shrink-0 mt-0.5" />
+                  <span className="leading-snug">{item}</span>
                 </li>
               ))}
             </ul>
@@ -89,27 +89,27 @@ export const ThreeWaySeparationCard: React.FC<ThreeWaySeparationProps> = ({
         </div>
 
         {/* 3. AI & Rule Interpretations */}
-        <div className="bg-gradient-to-b from-[#EFF6FF] to-[#DBEAFE]/40 border border-[#93C5FD] rounded-2xl p-5 flex flex-col justify-between shadow-2xs hover:shadow-xs transition-shadow">
+        <div className="bg-surface-secondary border border-border-default rounded-lg p-4 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-2.5">
-              <span className="text-xs font-extrabold text-[#1E3A8A] flex items-center gap-2">
-                <div className="w-7 h-7 rounded-xl bg-[#3B82F6] text-white flex items-center justify-center shadow-2xs">
-                  <Bot className="w-4 h-4 stroke-[2.5]" />
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-ink-primary flex items-center gap-2">
+                <div className="w-5 h-5 rounded bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                  <Bot className="w-3.5 h-3.5" />
                 </div>
-                AI Context & Logic
+                AI Synthesis
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-white text-[#3B82F6] border border-[#93C5FD] shadow-2xs uppercase tracking-wider">
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase tracking-wider">
                 Synthesized
               </span>
             </div>
-            <p className="text-[11px] text-[#1D4ED8] mb-3.5 leading-relaxed font-medium">
+            <p className="text-[11px] text-ink-muted mb-3 leading-relaxed">
               Synthesized behavioral assessments, edge-case risks, and suggested manual checklists.
             </p>
-            <ul className="space-y-2 text-xs text-[#1E3A8A]">
+            <ul className="space-y-1.5 text-xs text-ink-secondary">
               {aiInterpretations.map((item, idx) => (
-                <li key={idx} className="flex items-start gap-2 bg-white/70 p-2 rounded-lg border border-[#BFDBFE]">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#3B82F6] shrink-0 mt-0.5" />
-                  <span className="leading-snug font-medium">{item}</span>
+                <li key={idx} className="flex items-start gap-2 bg-white p-2 rounded border border-border-subtle">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600 shrink-0 mt-0.5" />
+                  <span className="leading-snug">{item}</span>
                 </li>
               ))}
             </ul>

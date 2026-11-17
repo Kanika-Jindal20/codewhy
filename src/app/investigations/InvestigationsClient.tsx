@@ -16,10 +16,10 @@ import {
   Calendar,
   Layers,
   ArrowRight,
-  Filter,
   Check,
   X,
   Loader2,
+  FolderGit2,
 } from 'lucide-react';
 import {
   Investigation,
@@ -185,162 +185,124 @@ export const InvestigationsClient: React.FC = () => {
   };
 
   return (
-    <div className="font-['Inter',sans-serif] max-w-7xl mx-auto space-y-6 pb-12">
-
-      {/* ── Header Banner ── */}
-      <div className="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-3xl p-6 sm:p-8 shadow-lg">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
-          <div className="flex items-start gap-4">
-            <span className="p-3 rounded-2xl bg-white/20 border border-white/30 shadow-inner shrink-0">
-              <History className="w-6 h-6 text-white stroke-[2.5]" />
+    <div className="max-w-7xl mx-auto space-y-6 pb-16">
+      {/* Page Header */}
+      <div className="bg-white border border-border-default rounded-xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-brand-emerald/10 text-brand-deep border border-brand-emerald/20">
+              <History className="w-3 h-3 text-brand-emerald" />
+              Investigation Memory
             </span>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                Investigation History
-              </h1>
-              <p className="text-indigo-100 text-sm leading-relaxed max-w-2xl mt-1">
-                Revisit previous repository investigations, inspect grounded answer threads, detect stale evidence across commit revisions, and continue inquiries seamlessly.
-              </p>
-            </div>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-surface-muted text-ink-muted border border-border-subtle font-mono">
+              Thread Persistence
+            </span>
           </div>
+          <h1 className="text-xl sm:text-2xl font-semibold text-ink-primary tracking-tight">
+            Investigation History
+          </h1>
+          <p className="text-xs sm:text-sm text-ink-muted mt-1 max-w-2xl">
+            Revisit previous codebase audits, inspect grounded findings threads, verify evidence freshness, and continue investigations.
+          </p>
+        </div>
 
-          <div className="shrink-0">
-            <Link href="/impact">
-              <button className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-indigo-700 font-bold text-sm rounded-xl shadow-md hover:bg-indigo-50 transition-all border border-white/80">
-                <ExternalLink className="w-4 h-4" />
-                New Impact Inquiry
-              </button>
-            </Link>
-          </div>
+        <div className="flex items-center gap-2.5 self-start md:self-auto">
+          <Link href="/impact">
+            <Button variant="primary" size="sm" icon={<ExternalLink className="w-3.5 h-3.5" />}>
+              New Impact Inquiry
+            </Button>
+          </Link>
         </div>
       </div>
 
-      {/* ── Main Two-Column Layout ── */}
+      {/* Main Two-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-        {/* ── LEFT PANEL: Search & Investigation List ── */}
-        <div className="lg:col-span-4 space-y-4">
-
+        {/* LEFT PANEL: Search & Investigation List */}
+        <div className="lg:col-span-4 space-y-3">
           {/* Search & Filter Card */}
-          <div className="bg-white rounded-2xl border border-indigo-100 shadow-lg p-4 space-y-3">
-            {/* Search input */}
+          <div className="bg-white rounded-xl border border-border-default shadow-xs p-3.5 space-y-2.5">
             <div className="relative">
-              <Search className="absolute left-3 top-2.5 w-4 h-4 text-indigo-300" />
+              <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-ink-faint" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search inquiries, files, questions…"
-                className="w-full pl-10 pr-3 py-2 bg-indigo-50 border border-indigo-200 rounded-xl text-sm text-gray-800 placeholder:text-indigo-300 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                placeholder="Filter inquiries..."
+                className="w-full pl-8 pr-2.5 py-1.5 bg-surface-secondary border border-border-default rounded-md text-xs text-ink-primary placeholder:text-ink-faint focus:outline-none focus:border-brand-emerald"
               />
             </div>
 
-            {/* Status filter pills */}
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Filter:</span>
-              <div className="flex items-center gap-1.5">
-                {(['all', 'active', 'archived'] as const).map((st) => {
-                  const isActive = statusFilter === st;
-                  const styles: Record<string, string> = {
-                    all: isActive
-                      ? 'bg-indigo-600 text-white border-indigo-600 shadow'
-                      : 'bg-indigo-50 text-indigo-500 border-indigo-200 hover:bg-indigo-100',
-                    active: isActive
-                      ? 'bg-emerald-500 text-white border-emerald-500 shadow'
-                      : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100',
-                    archived: isActive
-                      ? 'bg-gray-500 text-white border-gray-500 shadow'
-                      : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200',
-                  };
-                  return (
-                    <button
-                      key={st}
-                      onClick={() => setStatusFilter(st)}
-                      className={`px-3 py-1 rounded-full text-[11px] font-bold capitalize border transition-all ${styles[st]}`}
-                    >
-                      {st}
-                    </button>
-                  );
-                })}
-              </div>
+            <div className="flex items-center gap-1">
+              {(['all', 'active', 'archived'] as const).map((st) => {
+                const isActive = statusFilter === st;
+                return (
+                  <button
+                    key={st}
+                    onClick={() => setStatusFilter(st)}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-medium capitalize transition-all ${
+                      isActive
+                        ? 'bg-ink-primary text-white border border-ink-primary'
+                        : 'bg-surface-secondary text-ink-muted hover:text-ink-primary border border-border-subtle'
+                    }`}
+                  >
+                    {st}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {/* Investigation List */}
-          <div className="space-y-2.5">
+          <div className="space-y-2 max-h-[640px] overflow-y-auto pr-1">
             {isLoadingList ? (
-              <div className="p-10 text-center bg-white border border-indigo-100 rounded-2xl shadow-lg flex flex-col items-center gap-3">
-                <Loader2 className="w-7 h-7 animate-spin text-indigo-500" />
-                <span className="text-sm font-semibold text-indigo-400">Loading investigation history…</span>
+              <div className="p-8 text-center bg-white border border-border-default rounded-xl shadow-xs">
+                <Loader2 className="w-5 h-5 animate-spin text-brand-deep mx-auto mb-2" />
+                <span className="text-xs text-ink-muted">Loading history...</span>
               </div>
             ) : investigations.length === 0 ? (
-              <div className="p-10 text-center bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100 rounded-2xl shadow-lg space-y-3">
-                <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-100 flex items-center justify-center">
-                  <Archive className="w-7 h-7 text-indigo-400" />
-                </div>
-                <div className="font-bold text-indigo-700 text-sm">No investigations found</div>
-                <p className="text-xs text-indigo-400 max-w-xs mx-auto">
-                  {searchQuery
-                    ? 'Try clearing your search query.'
-                    : 'Run an impact analysis or ask a question to start one.'}
+              <div className="p-8 text-center bg-white border border-dashed border-border-default rounded-xl shadow-xs space-y-2">
+                <Archive className="w-6 h-6 text-ink-faint mx-auto" />
+                <div className="font-medium text-ink-secondary text-xs">No investigations found</div>
+                <p className="text-[11px] text-ink-muted">
+                  {searchQuery ? 'Try clearing your search query.' : 'Run an impact analysis to start one.'}
                 </p>
-                <Link href="/impact">
-                  <button className="mt-1 inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white font-bold text-xs rounded-xl hover:bg-indigo-700 transition-all shadow">
-                    <ArrowRight className="w-3.5 h-3.5" />
-                    Run Impact Analysis
-                  </button>
-                </Link>
               </div>
             ) : (
               investigations.map((inv) => {
                 const isSelected = inv.id === selectedId;
                 const isStale = inv.staleEvidenceStatus?.isStale;
-                const isArchived = inv.status === 'archived';
 
                 return (
                   <div
                     key={inv.id}
                     onClick={() => setSelectedId(inv.id)}
-                    className={`p-4 rounded-2xl border-l-4 cursor-pointer transition-all shadow-sm ${
+                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
                       isSelected
-                        ? 'bg-indigo-50 border-l-indigo-500 border border-indigo-200 ring-2 ring-indigo-500/20 shadow-md'
-                        : isArchived
-                        ? 'bg-gray-50 border-l-gray-300 border border-gray-200 hover:border-gray-300'
-                        : 'bg-white border-l-green-500 border border-gray-100 hover:border-indigo-200 hover:bg-indigo-50/30'
+                        ? 'bg-brand-emerald/5 border-brand-emerald ring-1 ring-brand-emerald/30 shadow-xs'
+                        : 'bg-white border-border-subtle hover:border-border-default hover:bg-surface-secondary'
                     }`}
                   >
-                    {/* Row 1: repo + badges */}
-                    <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <span className="text-[11px] font-mono text-gray-400 truncate">{inv.repoName}</span>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-[10px] font-mono text-ink-faint truncate">{inv.repoName}</span>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {isStale && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 text-[10px] font-bold">
-                            <AlertTriangle className="w-2.5 h-2.5" />
-                            Stale
-                          </span>
+                          <Badge variant="warning" size="sm">Stale</Badge>
                         )}
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                          inv.status === 'active'
-                            ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                            : 'bg-gray-100 text-gray-500 border-gray-200'
-                        }`}>
+                        <Badge variant={inv.status === 'active' ? 'success' : 'outline'} size="sm">
                           {inv.status}
-                        </span>
+                        </Badge>
                       </div>
                     </div>
 
-                    {/* Title */}
-                    <h3 className="text-sm font-bold text-gray-800 line-clamp-2 mb-1">
+                    <h3 className="text-xs font-semibold text-ink-primary line-clamp-2 mb-1">
                       {inv.title}
                     </h3>
 
-                    {/* Summary */}
-                    <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed mb-2.5">
+                    <p className="text-[11px] text-ink-muted line-clamp-2 leading-relaxed mb-2">
                       {inv.entries[0]?.answerSummary || inv.originalQuestion}
                     </p>
 
-                    {/* Footer */}
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-[10px] font-mono text-gray-400">
+                    <div className="flex items-center justify-between pt-1.5 border-t border-border-subtle text-[10px] font-mono text-ink-faint">
                       <span>{inv.entries.length} {inv.entries.length === 1 ? 'inquiry' : 'inquiries'}</span>
                       <span>{new Date(inv.updatedAt).toLocaleDateString()}</span>
                     </div>
@@ -351,142 +313,116 @@ export const InvestigationsClient: React.FC = () => {
           </div>
         </div>
 
-        {/* ── RIGHT PANEL: Investigation Detail Workspace ── */}
-        <div className="lg:col-span-8 space-y-5">
+        {/* RIGHT PANEL: Investigation Detail Workspace */}
+        <div className="lg:col-span-8 space-y-4">
           {isLoadingDetail ? (
-            <div className="p-16 text-center bg-white border border-indigo-100 rounded-2xl shadow-lg flex flex-col items-center gap-3">
-              <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-              <span className="text-sm font-semibold text-indigo-400">Restoring investigation context…</span>
+            <div className="p-16 text-center bg-white border border-border-default rounded-xl shadow-xs">
+              <Loader2 className="w-5 h-5 animate-spin text-brand-deep mx-auto mb-2" />
+              <span className="text-xs text-ink-muted">Restoring investigation context...</span>
             </div>
           ) : selectedInvestigation ? (
-            <div className="space-y-5">
-
-              {/* ── Detail Header Card ── */}
-              <div className="bg-white rounded-2xl shadow-lg border-t-4 border-t-indigo-500 border border-indigo-100 p-6 sm:p-7 space-y-5">
-
-                {/* Title bar row */}
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-4 border-b border-indigo-100">
-                  <div className="flex-1 min-w-0 space-y-2">
+            <div className="space-y-4">
+              {/* Detail Header Card */}
+              <div className="bg-white rounded-xl border border-border-default p-5 sm:p-6 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-3 border-b border-border-subtle">
+                  <div className="flex-1 min-w-0 space-y-1.5">
                     {isRenaming ? (
                       <div className="flex items-center gap-2">
                         <input
                           type="text"
                           value={newTitle}
                           onChange={(e) => setNewTitle(e.target.value)}
-                          className="flex-1 px-3 py-2 bg-indigo-50 border border-indigo-400 rounded-xl text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all"
+                          className="flex-1 px-2.5 py-1 bg-surface-secondary border border-border-default rounded text-xs font-semibold text-ink-primary focus:outline-none focus:border-brand-emerald"
                         />
                         <button
                           onClick={handleRename}
-                          className="p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow"
-                          title="Save title"
+                          className="p-1.5 rounded bg-brand-emerald text-ink-primary hover:bg-brand-deep transition-all"
+                          title="Save"
                         >
-                          <Check className="w-4 h-4" />
+                          <Check className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => {
                             setIsRenaming(false);
                             setNewTitle(selectedInvestigation.title);
                           }}
-                          className="p-2 rounded-xl bg-gray-100 border border-gray-200 text-gray-500 hover:text-gray-700 transition-all"
+                          className="p-1.5 rounded bg-surface-muted text-ink-muted hover:text-ink-primary"
                           title="Cancel"
                         >
-                          <X className="w-4 h-4" />
+                          <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2.5">
-                        <h2 className="text-xl font-extrabold text-gray-900 leading-tight truncate">
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-base font-semibold text-ink-primary truncate">
                           {selectedInvestigation.title}
                         </h2>
                         <button
                           onClick={() => setIsRenaming(true)}
-                          className="p-1.5 rounded-lg text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
-                          title="Rename investigation"
+                          className="p-1 text-ink-muted hover:text-ink-primary transition-colors"
+                          title="Rename"
                         >
-                          <Edit2 className="w-3.5 h-3.5" />
+                          <Edit2 className="w-3 h-3" />
                         </button>
                       </div>
                     )}
 
-                    {/* Repo / Branch / Status pills */}
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold">
-                        <Layers className="w-3 h-3" />
+                      <span className="font-mono text-[11px] text-ink-muted bg-surface-secondary px-2 py-0.5 rounded border border-border-subtle">
                         {selectedInvestigation.repoName}
                       </span>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-violet-100 text-violet-700 border border-violet-200 text-xs font-bold">
-                        {selectedInvestigation.ownerName}
-                      </span>
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${
-                        selectedInvestigation.status === 'active'
-                          ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                          : 'bg-gray-100 text-gray-500 border-gray-200'
-                      }`}>
-                        {selectedInvestigation.status === 'active' ? (
-                          <CheckCircle2 className="w-3 h-3" />
-                        ) : (
-                          <Archive className="w-3 h-3" />
-                        )}
-                        {selectedInvestigation.visibility}
-                      </span>
+                      <Badge variant={selectedInvestigation.status === 'active' ? 'success' : 'outline'} size="sm">
+                        {selectedInvestigation.status}
+                      </Badge>
                     </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Button
+                      variant="outline"
+                      size="xs"
                       onClick={handleToggleArchive}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 font-bold text-sm hover:bg-indigo-100 transition-all"
+                      icon={selectedInvestigation.status === 'active' ? <Archive className="w-3 h-3" /> : <RotateCcw className="w-3 h-3" />}
                     >
-                      {selectedInvestigation.status === 'active' ? (
-                        <Archive className="w-3.5 h-3.5" />
-                      ) : (
-                        <RotateCcw className="w-3.5 h-3.5" />
-                      )}
                       {selectedInvestigation.status === 'active' ? 'Archive' : 'Restore'}
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
+                      variant="danger"
+                      size="xs"
                       onClick={() => setDeleteConfirmationId(selectedInvestigation.id)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 font-bold text-sm hover:bg-red-100 transition-all"
+                      icon={<Trash2 className="w-3 h-3" />}
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
                       Delete
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
                 {/* Stale Evidence Amber Alert */}
                 {selectedInvestigation.staleEvidenceStatus?.isStale && (
-                  <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
-                    <div className="p-1.5 rounded-lg bg-amber-100 shrink-0">
-                      <AlertTriangle className="w-4 h-4 text-amber-600" />
-                    </div>
-                    <div className="space-y-1">
-                      <div className="font-bold text-amber-800 text-sm flex items-center gap-2">
+                  <div className="p-3 rounded-lg bg-amber-50/70 border border-amber-200 flex items-start gap-2.5">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="space-y-0.5 text-xs">
+                      <div className="font-medium text-amber-900">
                         Potentially Stale Evidence Detected
-                        <span className="text-[10px] font-mono text-amber-500 font-normal">
-                          (Revalidated {new Date(selectedInvestigation.staleEvidenceStatus.checkedAt).toLocaleTimeString()})
-                        </span>
                       </div>
-                      <p className="text-amber-700 text-xs leading-relaxed">
+                      <p className="text-amber-800 leading-relaxed">
                         {selectedInvestigation.staleEvidenceStatus.reason}
                       </p>
                     </div>
                   </div>
                 )}
 
-                {/* Related Cross-Feature Links */}
+                {/* Related Links */}
                 {selectedInvestigation.relatedLinks.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                      Linked Artifacts:
-                    </span>
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-[10px] font-mono uppercase text-ink-faint">Linked:</span>
                     {selectedInvestigation.relatedLinks.map((link, idx) => (
                       <Link
                         key={idx}
                         href={link.href}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-600 text-xs font-semibold hover:bg-indigo-100 hover:underline transition-all"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-secondary border border-border-subtle text-brand-deep text-xs font-medium hover:underline"
                       >
                         <ExternalLink className="w-3 h-3" />
                         {link.label}
@@ -496,104 +432,75 @@ export const InvestigationsClient: React.FC = () => {
                 )}
               </div>
 
-              {/* ── Q&A Thread ── */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-5 rounded-full bg-indigo-500" />
-                    <span className="text-sm font-extrabold text-gray-800 uppercase tracking-wide">
-                      Investigation Thread
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold">
-                      {selectedInvestigation.entries.length}
-                    </span>
-                  </div>
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Chronological</span>
+              {/* Q&A Thread */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold text-ink-primary uppercase tracking-wider">
+                    Investigation Thread ({selectedInvestigation.entries.length})
+                  </h3>
                 </div>
 
                 {selectedInvestigation.entries.map((entry, idx) => (
                   <div
                     key={entry.id}
-                    className="bg-white rounded-2xl border border-indigo-100 shadow-lg overflow-hidden"
+                    className="bg-white rounded-xl border border-border-default shadow-xs overflow-hidden"
                   >
-                    {/* Question bubble */}
-                    <div className="bg-indigo-50 border-l-4 border-indigo-500 p-5">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-1">
-                          <span className="inline-block text-[10px] font-bold uppercase tracking-widest text-indigo-500 mb-1">
-                            Inquiry #{idx + 1}
-                          </span>
-                          <h3 className="text-sm font-extrabold text-indigo-900 leading-snug">
-                            {entry.question}
-                          </h3>
-                        </div>
-                        <span className="text-[10px] font-mono text-indigo-400 shrink-0 pt-1">
-                          {new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {/* Question Header */}
+                    <div className="bg-surface-secondary border-b border-border-subtle p-3.5 flex items-start justify-between gap-3">
+                      <div>
+                        <span className="text-[10px] font-mono uppercase text-ink-faint block mb-0.5">
+                          Inquiry #{idx + 1}
                         </span>
+                        <h4 className="text-xs font-semibold text-ink-primary">
+                          {entry.question}
+                        </h4>
                       </div>
+                      <span className="text-[10px] font-mono text-ink-faint shrink-0">
+                        {new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
                     </div>
 
                     {/* Answer body */}
-                    <div className="p-5 space-y-4">
-                      {/* Synthesized answer */}
-                      <div className="p-4 bg-gray-50 rounded-xl border-l-4 border-emerald-500 space-y-1">
-                        <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          Synthesized Answer
-                        </div>
-                        <p className="text-sm text-gray-700 leading-relaxed">
-                          {entry.answerSummary}
-                        </p>
+                    <div className="p-4 space-y-3">
+                      <div className="text-xs leading-relaxed text-ink-secondary">
+                        {entry.answerSummary}
                       </div>
 
-                      {/* Detailed findings */}
                       {entry.detailedFindings && entry.detailedFindings.length > 0 && (
-                        <div className="space-y-2">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                            Grounded Findings
+                        <div className="space-y-1.5 pt-2 border-t border-border-subtle">
+                          <span className="text-[10px] font-mono uppercase text-ink-faint block">
+                            Key Findings
                           </span>
-                          <ul className="space-y-1.5">
+                          <ul className="space-y-1 text-xs text-ink-muted">
                             {entry.detailedFindings.map((f, i) => (
-                              <li key={i} className="flex items-start gap-2.5 text-sm text-gray-600 leading-relaxed">
-                                <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
-                                  {i + 1}
-                                </span>
-                                {f}
+                              <li key={i} className="flex items-start gap-2">
+                                <span className="text-brand-deep font-bold">•</span>
+                                <span>{f}</span>
                               </li>
                             ))}
                           </ul>
                         </div>
                       )}
 
-                      {/* Evidence artifacts */}
+                      {/* Evidence */}
                       {entry.evidence && entry.evidence.length > 0 && (
-                        <div className="space-y-2 pt-3 border-t border-gray-100">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                              Cited Evidence Artifacts
-                            </span>
-                            <span className="px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200 text-[10px] font-bold">
-                              {entry.evidence.length}
-                            </span>
-                          </div>
-                          <div className="space-y-1.5">
+                        <div className="space-y-1.5 pt-2 border-t border-border-subtle">
+                          <span className="text-[10px] font-mono uppercase text-ink-faint block">
+                            Cited Evidence ({entry.evidence.length})
+                          </span>
+                          <div className="space-y-1">
                             {entry.evidence.map((ev) => (
                               <div
                                 key={ev.id}
-                                className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100 gap-2"
+                                className="flex items-center justify-between p-2 rounded bg-surface-secondary border border-border-subtle text-xs"
                               >
-                                <div className="min-w-0 flex items-start gap-2.5">
-                                  <div className="p-1.5 rounded-lg bg-indigo-100 shrink-0">
-                                    <FileText className="w-3.5 h-3.5 text-indigo-600" />
-                                  </div>
-                                  <div className="min-w-0">
-                                    <span className="font-bold text-sm text-gray-800 truncate block">
-                                      {ev.title}
-                                    </span>
-                                    <span className="text-[10px] font-mono text-gray-400 truncate block">
-                                      {ev.filePath ? `${ev.filePath}:${ev.startLine || 1}` : ev.commitHash}
-                                    </span>
-                                  </div>
+                                <div className="min-w-0 pr-2">
+                                  <span className="font-medium text-ink-primary truncate block font-mono">
+                                    {ev.title}
+                                  </span>
+                                  <span className="text-[10px] font-mono text-ink-muted truncate block">
+                                    {ev.filePath ? `${ev.filePath}:${ev.startLine || 1}` : ev.commitHash}
+                                  </span>
                                 </div>
                                 <ConfidenceBadge
                                   score={ev.confidenceScore}
@@ -609,7 +516,7 @@ export const InvestigationsClient: React.FC = () => {
                 ))}
               </div>
 
-              {/* ── Follow-up Composer ── */}
+              {/* Follow-up Composer */}
               <FollowUpComposer
                 suggestions={suggestions}
                 onAskFollowUp={handleAskFollowUp}
@@ -617,59 +524,46 @@ export const InvestigationsClient: React.FC = () => {
               />
             </div>
           ) : (
-            /* ── Empty state (no investigation selected) ── */
-            <div className="p-16 text-center bg-gradient-to-br from-indigo-50 via-white to-violet-50 border border-indigo-100 rounded-3xl shadow-lg space-y-4">
-              <div className="w-20 h-20 mx-auto rounded-3xl bg-indigo-100 flex items-center justify-center shadow-inner">
-                <Archive className="w-10 h-10 text-indigo-400" />
-              </div>
-              <div className="font-extrabold text-gray-800 text-lg">No Investigation Selected</div>
-              <p className="text-sm text-gray-500 max-w-sm mx-auto leading-relaxed">
-                Select an investigation from the list on the left to restore its questions, evidence citations, and continue exploration.
+            <div className="p-12 text-center bg-white border border-dashed border-border-default rounded-xl shadow-xs space-y-2">
+              <Archive className="w-8 h-8 text-ink-faint mx-auto mb-1" />
+              <div className="font-semibold text-ink-primary text-sm">No Investigation Selected</div>
+              <p className="text-xs text-ink-muted max-w-xs mx-auto">
+                Select an entry on the left to restore its evidence thread and continue inquiry.
               </p>
-              <Link href="/impact">
-                <button className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white font-bold text-sm rounded-xl hover:bg-indigo-700 transition-all shadow-md mt-2">
-                  <ArrowRight className="w-4 h-4" />
-                  Run Impact Analysis
-                </button>
-              </Link>
             </div>
           )}
         </div>
       </div>
 
-      {/* ── Delete Confirmation Modal ── */}
+      {/* Delete Confirmation Modal */}
       {deleteConfirmationId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl border border-red-200 shadow-2xl p-7 max-w-md w-full space-y-5">
-            {/* Warning header */}
-            <div className="flex items-start gap-4">
-              <div className="p-3 rounded-2xl bg-red-100 shrink-0">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white rounded-xl border border-border-default shadow-xl p-6 max-w-sm w-full space-y-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-extrabold text-red-700 text-lg">Confirm Permanent Deletion</h3>
-                <p className="text-red-400 text-xs mt-0.5 font-semibold">This action cannot be undone</p>
+                <h3 className="font-semibold text-ink-primary text-sm">Delete Investigation</h3>
+                <p className="text-xs text-ink-muted mt-1 leading-relaxed">
+                  Are you sure you want to permanently delete this investigation? All thread entries and saved evidence will be removed.
+                </p>
               </div>
             </div>
 
-            <p className="text-sm text-gray-600 leading-relaxed bg-red-50 border border-red-100 rounded-xl p-4">
-              Are you sure you want to permanently delete this investigation? This will remove the complete Q&amp;A thread and all evidence history.
-            </p>
-
-            <div className="flex items-center justify-end gap-3 pt-1">
-              <button
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setDeleteConfirmationId(null)}
-                className="px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 text-gray-700 font-bold text-sm hover:bg-gray-100 transition-all"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
                 onClick={() => handleDelete(deleteConfirmationId)}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-all shadow-md"
               >
-                <Trash2 className="w-4 h-4" />
-                Delete Investigation
-              </button>
+                Delete
+              </Button>
             </div>
           </div>
         </div>

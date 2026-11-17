@@ -1,11 +1,12 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost';
-  size?: 'sm' | 'md' | 'lg';
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost' | 'emerald-outline';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   isLoading?: boolean;
   icon?: React.ReactNode;
+  fullWidth?: boolean;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -15,32 +16,44 @@ export const Button: React.FC<ButtonProps> = ({
   isLoading = false,
   disabled = false,
   icon,
+  fullWidth = false,
   className = '',
   ...props
 }) => {
-  const baseStyles = 'inline-flex items-center justify-center font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-accent-primary/20 focus:border-accent-primary disabled:opacity-50 disabled:cursor-not-allowed select-none';
-  
+  const baseStyles =
+    'inline-flex items-center justify-center font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-[#3ECF8E]/30 focus:border-[#3ECF8E] disabled:opacity-40 disabled:cursor-not-allowed select-none active:scale-[0.985]';
+
   const sizeStyles = {
-    sm: 'text-xs px-2.5 py-1.5 rounded-lg gap-1.5',
-    md: 'text-xs sm:text-sm px-3.5 py-2 rounded-lg gap-2',
-    lg: 'text-sm px-4 py-2.5 rounded-lg gap-2.5',
+    xs: 'text-[11px] px-2 py-1 rounded-[6px] gap-1',
+    sm: 'text-xs px-2.5 py-1.5 rounded-[6px] gap-1.5 font-medium',
+    md: 'text-xs sm:text-sm px-3.5 py-2 rounded-[8px] gap-2 font-medium',
+    lg: 'text-sm px-4.5 py-2.5 rounded-[8px] gap-2.5 font-medium',
   }[size];
 
   const variantStyles = {
-    primary: 'bg-[#3B82F6] hover:bg-[#2563EB] active:bg-[#1D4ED8] text-white border border-transparent shadow-xs hover:shadow transition-all font-semibold',
-    secondary: 'bg-white hover:bg-[#F8FAFC] active:bg-[#F1F5F9] text-[#172033] border border-app-border hover:border-slate-300 shadow-2xs hover:shadow-xs transition-all font-semibold',
-    outline: 'bg-white hover:bg-[#EBF2FF] active:bg-[#DCE7FC] text-[#172033] hover:text-[#3B82F6] border border-app-border hover:border-[#3B82F6]/40 shadow-2xs transition-all font-semibold',
-    danger: 'bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-[#EF4444] border border-rose-200 font-semibold transition-all',
-    ghost: 'bg-transparent hover:bg-[#F4F7FF] active:bg-[#EBF2FF] text-text-secondary hover:text-text-primary border-transparent transition-all font-medium',
+    primary:
+      'bg-[#3ECF8E] hover:bg-[#24B47E] text-[#171717] border border-transparent shadow-xs hover:shadow font-semibold',
+    secondary:
+      'bg-white hover:bg-[#FAFAFA] active:bg-[#F4F4F5] text-[#171717] border border-[#DFDFDF] hover:border-[#C7C7C7] shadow-2xs font-medium',
+    outline:
+      'bg-transparent hover:bg-[#F4F4F5] active:bg-[#EDEDED] text-[#212121] border border-[#EDEDED] hover:border-[#DFDFDF] font-medium',
+    danger:
+      'bg-white hover:bg-[#FEF2F2] active:bg-[#FEE2E2] text-[#EF4444] border border-[#FECACA] hover:border-[#F87171] font-medium',
+    ghost:
+      'bg-transparent hover:bg-[#F4F4F5] active:bg-[#EDEDED] text-[#707070] hover:text-[#171717] border-transparent font-medium',
+    'emerald-outline':
+      'bg-white hover:bg-[#ECFDF5] text-[#24B47E] border border-[#3ECF8E]/50 hover:border-[#3ECF8E] font-medium shadow-2xs',
   }[variant];
+
+  const widthStyle = fullWidth ? 'w-full' : '';
 
   return (
     <button
       disabled={disabled || isLoading}
-      className={`${baseStyles} ${sizeStyles} ${variantStyles} ${className}`}
+      className={`${baseStyles} ${sizeStyles} ${variantStyles} ${widthStyle} ${className}`}
       {...props}
     >
-      {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : icon}
+      {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" /> : icon}
       {children}
     </button>
   );

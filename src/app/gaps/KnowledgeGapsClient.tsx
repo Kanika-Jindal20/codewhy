@@ -12,12 +12,12 @@ import {
   Zap, 
   Compass,
   FileCode,
-  Info
+  Info,
+  FolderGit2
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useActiveRepo } from '@/lib/repositories/active-repo-client';
-
 
 export function KnowledgeGapsClient() {
   const { activeRepo } = useActiveRepo();
@@ -48,118 +48,109 @@ export function KnowledgeGapsClient() {
   const debtTier = debtScore > 50 ? 'Elevated Debt' : debtScore > 15 ? 'Moderate Debt' : 'Healthy';
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-16">
+    <div className="max-w-6xl mx-auto space-y-6 pb-16">
+      {/* Page Header */}
+      <div className="bg-white border border-border-default rounded-xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-brand-emerald/10 text-brand-deep border border-brand-emerald/20">
+              <ShieldAlert className="w-3 h-3 text-brand-emerald" />
+              Technical Debt Audit
+            </span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-surface-muted text-ink-muted border border-border-subtle font-mono">
+              AST Verified
+            </span>
+          </div>
+          <h1 className="text-xl sm:text-2xl font-semibold text-ink-primary tracking-tight">
+            Knowledge Gaps & Technical Debt
+          </h1>
+          <p className="text-xs sm:text-sm text-ink-muted mt-1 max-w-2xl">
+            Detect undocumented architectural decisions, blind spots, and missing test specifications across the codebase.
+          </p>
+        </div>
 
-      {/* ── Page Header Banner (Sleek High-Contrast Navy Banner with Amber Accent) ── */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-[#14213D] via-[#1E2E4F] to-[#2B3E68] rounded-3xl p-7 sm:p-8 shadow-xl border border-slate-700/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-72 h-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center shrink-0 shadow-lg text-amber-400">
-            <ShieldAlert className="w-7 h-7 stroke-[2.5]" />
+        <div className="flex items-center gap-2.5 self-start md:self-auto">
+          <div className="flex items-center gap-2 rounded-lg border border-border-default bg-surface-secondary px-3 py-1.5 text-xs text-ink-secondary">
+            <FolderGit2 className="w-3.5 h-3.5 text-ink-muted" />
+            <span className="font-mono font-medium">{activeRepo.repoName}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Debt Score + Stats Row */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Debt Score Widget */}
+        <div className="bg-white border border-border-default rounded-xl p-5 shadow-xs flex flex-col items-center justify-center text-center">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-ink-faint mb-1">
+            Debt Score
+          </span>
+          <div className="flex items-baseline gap-1 mb-2">
+            <span className="text-4xl font-semibold font-mono text-ink-primary">{debtScore}</span>
+            <span className="text-xs font-mono text-ink-faint">/ 100</span>
+          </div>
+          <Badge
+            variant={debtScore > 50 ? 'error' : debtScore > 15 ? 'warning' : 'success'}
+            size="sm"
+          >
+            {debtTier}
+          </Badge>
+          <p className="text-[11px] text-ink-muted mt-2 leading-tight">
+            Derived from commit churn & missing test fixtures
+          </p>
+        </div>
+
+        {/* Total Gaps */}
+        <div className="bg-white border border-border-default rounded-xl p-5 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-ink-faint">
+              Total Gaps
+            </span>
+            <FileText className="w-4 h-4 text-ink-muted" />
           </div>
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-tight">
-                Knowledge Gaps & Technical Debt
-              </h1>
-              <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                Codebase Audit
-              </span>
-            </div>
-            <p className="mt-1 text-slate-300 text-sm leading-relaxed max-w-xl">
-              Blind spots, undocumented decisions, and test omissions detected in{' '}
-              <span className="font-bold text-white underline decoration-amber-400/60 underline-offset-2">{activeRepo.repoName}</span>.
-            </p>
+            <div className="text-2xl font-semibold font-mono text-ink-primary">{gaps.length}</div>
+            <div className="text-xs text-ink-muted mt-0.5">Identified blind spots</div>
           </div>
         </div>
 
-        <div className="relative z-10 shrink-0">
-          <span className="px-4 py-2 rounded-xl bg-white/10 text-white font-bold text-xs border border-white/20 backdrop-blur-sm shadow-sm inline-flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-            {gaps.length} Actionable Gaps
-          </span>
-        </div>
-      </div>
-
-      {/* ── Debt Score + Stats Row ── */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-
-        {/* Debt Score Widget (Crisp High-Contrast Typography) */}
-        <div className="md:col-span-1 bg-white border border-gray-200 rounded-3xl p-6 shadow-md flex flex-col items-center gap-3">
-          {/* Circular Score Badge */}
-          <div className="relative flex items-center justify-center w-28 h-28">
-            <svg className="absolute inset-0 w-28 h-28" viewBox="0 0 112 112">
-              <circle cx="56" cy="56" r="50" fill="none" stroke="#F1F5F9" strokeWidth="8" />
-              <circle
-                cx="56" cy="56" r="50"
-                fill="none"
-                stroke="#F59E0B"
-                strokeWidth="8"
-                strokeDasharray={`${(debtScore / 100) * 314} 314`}
-                strokeLinecap="round"
-                transform="rotate(-90 56 56)"
-              />
-            </svg>
-            <div className="flex flex-col items-center">
-              <span className="text-3xl font-extrabold text-gray-900 leading-none">{debtScore}</span>
-              <span className="text-xs font-bold text-gray-500 leading-none mt-0.5">/100</span>
-            </div>
+        {/* High Severity */}
+        <div className="bg-white border border-border-default rounded-xl p-5 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-rose-600">
+              High Severity
+            </span>
+            <AlertTriangle className="w-4 h-4 text-rose-600" />
           </div>
-          <div className="text-center space-y-1.5">
-            <div className="px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-extrabold uppercase tracking-wider inline-block border border-amber-300">
-              {debtTier}
-            </div>
-            <p className="text-xs text-gray-600 font-medium leading-snug">
-              Calculated from commit history, missing ADR records, and test gaps.
-            </p>
+          <div>
+            <div className="text-2xl font-semibold font-mono text-rose-600">{highCount}</div>
+            <div className="text-xs text-ink-muted mt-0.5">Requires immediate attention</div>
           </div>
         </div>
 
-        {/* Stats Mini Cards */}
-        <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
-
-          {/* Total Gaps — Blue */}
-          <div className="bg-white border border-blue-200 rounded-2xl p-5 shadow-md flex flex-col gap-2">
-            <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow">
-              <FileText className="w-5 h-5 stroke-[2]" />
-            </div>
-            <div className="text-3xl sm:text-4xl font-extrabold text-gray-900">{gaps.length}</div>
-            <div className="text-xs font-extrabold uppercase tracking-wider text-blue-700">Total Gaps</div>
-            <p className="text-xs text-gray-500 font-medium">All open knowledge blind spots</p>
+        {/* Medium Severity */}
+        <div className="bg-white border border-border-default rounded-xl p-5 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-amber-600">
+              Medium Severity
+            </span>
+            <Info className="w-4 h-4 text-amber-600" />
           </div>
-
-          {/* High Severity — Red */}
-          <div className="bg-white border border-red-200 rounded-2xl p-5 shadow-md flex flex-col gap-2">
-            <div className="w-10 h-10 rounded-xl bg-red-500 text-white flex items-center justify-center shadow">
-              <AlertTriangle className="w-5 h-5 stroke-[2]" />
-            </div>
-            <div className="text-3xl sm:text-4xl font-extrabold text-gray-900">{highCount}</div>
-            <div className="text-xs font-extrabold uppercase tracking-wider text-red-700">High Severity</div>
-            <p className="text-xs text-gray-500 font-medium">Immediate attention required</p>
+          <div>
+            <div className="text-2xl font-semibold font-mono text-amber-600">{mediumCount}</div>
+            <div className="text-xs text-ink-muted mt-0.5">Recommended to resolve soon</div>
           </div>
-
-          {/* Medium Severity — Amber Accent with High Contrast Heading */}
-          <div className="bg-white border border-amber-200 rounded-2xl p-5 shadow-md flex flex-col gap-2">
-            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow">
-              <Info className="w-5 h-5 stroke-[2]" />
-            </div>
-            <div className="text-3xl sm:text-4xl font-extrabold text-gray-900">{mediumCount}</div>
-            <div className="text-xs font-extrabold uppercase tracking-wider text-amber-800">Medium Severity</div>
-            <p className="text-xs text-gray-500 font-medium">Should be addressed soon</p>
-          </div>
-
         </div>
       </div>
 
-      {/* ── Filter Tabs ── */}
-      <div className="flex items-center gap-3">
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={() => setFilterSeverity('all')}
-          className={`px-5 py-2.5 text-xs font-extrabold rounded-full transition-all shadow-sm ${
+          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
             filterSeverity === 'all'
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'bg-white text-gray-700 border border-gray-300 hover:border-blue-400'
+              ? 'bg-ink-primary text-white border border-ink-primary'
+              : 'bg-surface-secondary text-ink-muted hover:text-ink-primary border border-border-subtle'
           }`}
         >
           All Gaps ({gaps.length})
@@ -167,10 +158,10 @@ export function KnowledgeGapsClient() {
         <button
           type="button"
           onClick={() => setFilterSeverity('high')}
-          className={`px-5 py-2.5 text-xs font-extrabold rounded-full transition-all shadow-sm ${
+          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
             filterSeverity === 'high'
-              ? 'bg-red-600 text-white shadow-md'
-              : 'bg-white text-gray-700 border border-gray-300 hover:border-red-400'
+              ? 'bg-rose-600 text-white border border-rose-600'
+              : 'bg-surface-secondary text-ink-muted hover:text-ink-primary border border-border-subtle'
           }`}
         >
           High Severity ({highCount})
@@ -178,26 +169,27 @@ export function KnowledgeGapsClient() {
         <button
           type="button"
           onClick={() => setFilterSeverity('medium')}
-          className={`px-5 py-2.5 text-xs font-extrabold rounded-full transition-all shadow-sm ${
+          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
             filterSeverity === 'medium'
-              ? 'bg-amber-600 text-white shadow-md'
-              : 'bg-white text-gray-700 border border-gray-300 hover:border-amber-400'
+              ? 'bg-amber-600 text-white border border-amber-600'
+              : 'bg-surface-secondary text-ink-muted hover:text-ink-primary border border-border-subtle'
           }`}
         >
           Medium Severity ({mediumCount})
         </button>
       </div>
 
-      {/* ── Gaps List ── */}
-      <section className="space-y-5">
-        {filteredGaps.length === 0 ? (
-          /* Empty State */
-          <div className="bg-white border-2 border-green-200 rounded-3xl p-16 shadow-md flex flex-col items-center gap-4 text-center">
-            <div className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center shadow-lg">
-              <CheckCircle2 className="w-8 h-8 text-white stroke-[2]" />
-            </div>
-            <h3 className="text-xl font-extrabold text-gray-900">No gaps detected — well done!</h3>
-            <p className="text-gray-600 font-medium max-w-sm text-sm">
+      {/* Gaps List */}
+      <section className="space-y-4">
+        {isLoading ? (
+          <div className="bg-white rounded-xl border border-border-default p-8 text-center text-xs text-ink-muted animate-pulse">
+            Auditing codebase knowledge gaps...
+          </div>
+        ) : filteredGaps.length === 0 ? (
+          <div className="bg-white border border-dashed border-border-default rounded-xl p-12 text-center">
+            <CheckCircle2 className="w-8 h-8 text-brand-deep mx-auto mb-2" />
+            <h3 className="text-sm font-semibold text-ink-primary">No gaps detected</h3>
+            <p className="text-xs text-ink-muted mt-0.5">
               Your codebase has no knowledge gaps matching this filter.
             </p>
           </div>
@@ -205,99 +197,69 @@ export function KnowledgeGapsClient() {
           filteredGaps.map((gap) => (
             <div
               key={gap.id}
-              className={`bg-white rounded-3xl shadow-md overflow-hidden border ${
-                gap.severity === 'high'
-                  ? 'border-gray-200 border-l-4 border-l-red-500'
-                  : 'border-gray-200 border-l-4 border-l-amber-500'
-              }`}
+              className="bg-white rounded-xl border border-border-default shadow-xs overflow-hidden hover:border-border-strong transition-all"
             >
-              {/* Card Header Area */}
-              <div className="px-6 pt-6 pb-4 bg-gray-50/60 border-b border-gray-100">
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                  <div className="space-y-2.5 flex-1">
-                    {/* Severity Badge + Title */}
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      {gap.severity === 'high' ? (
-                        <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-red-100 text-red-700 border border-red-300 uppercase tracking-wide">
-                          High Severity
-                        </span>
-                      ) : (
-                        <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800 border border-amber-300 uppercase tracking-wide">
-                          Medium Severity
-                        </span>
-                      )}
-                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-white border border-gray-200 text-gray-700 shadow-xs">
+              <div className="p-5 border-b border-border-subtle">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                  <div className="space-y-1.5 flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge
+                        variant={gap.severity === 'high' ? 'error' : 'warning'}
+                        size="sm"
+                      >
+                        {gap.severity}
+                      </Badge>
+                      <span className="text-[11px] font-mono text-ink-muted bg-surface-secondary px-2 py-0.5 rounded border border-border-subtle">
                         {gap.rule}
                       </span>
                     </div>
 
-                    {/* Gap Title in High Contrast Dark Charcoal */}
-                    <h3 className="text-xl font-extrabold text-gray-900 tracking-tight">
+                    <h3 className="text-sm font-semibold text-ink-primary">
                       {gap.title}
                     </h3>
 
-                    {/* File Path */}
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-md bg-gray-100 flex items-center justify-center shrink-0">
-                        <FileCode className="w-3.5 h-3.5 stroke-[2] text-gray-700" />
-                      </div>
-                      <span className="text-sm font-bold text-gray-800">
-                        {gap.filePath}
-                      </span>
+                    <div className="flex items-center gap-1.5 text-xs font-mono text-ink-muted">
+                      <FileCode className="w-3.5 h-3.5 text-ink-faint shrink-0" />
+                      <span className="truncate">{gap.filePath}</span>
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     <Link href="/impact">
-                      <button className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-all hover:shadow-md w-full sm:w-auto">
-                        <Zap className="w-4 h-4" />
-                        Check Blast Radius
-                      </button>
+                      <Button variant="secondary" size="xs" icon={<Zap className="w-3 h-3 text-brand-deep" />}>
+                        Blast Radius
+                      </Button>
                     </Link>
                     <Link href="/architecture">
-                      <button className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-sm transition-all hover:shadow-md w-full sm:w-auto">
-                        <Compass className="w-4 h-4" />
-                        View in Graph
-                      </button>
+                      <Button variant="outline" size="xs" icon={<Compass className="w-3 h-3" />}>
+                        Architecture
+                      </Button>
                     </Link>
                   </div>
                 </div>
               </div>
 
               {/* Card Body */}
-              <div className="px-6 pb-6 pt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                {/* Developer Impact Box (High Contrast Headings) */}
-                <div className="rounded-2xl p-4.5 border border-red-200 bg-red-50/50 space-y-2">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-red-500 text-white flex items-center justify-center shrink-0">
-                      <AlertTriangle className="w-4 h-4 stroke-[2.5]" />
-                    </div>
-                    <span className="text-sm font-extrabold text-gray-900">
-                      Why It Matters
-                    </span>
+              <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-3 bg-surface-secondary/40">
+                <div className="rounded-lg p-3 border border-border-subtle bg-white space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-ink-primary">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Why It Matters</span>
                   </div>
-                  <p className="text-xs text-gray-700 leading-relaxed pl-9 font-medium">
+                  <p className="text-xs text-ink-muted leading-relaxed pl-5">
                     {gap.developerImpact}
                   </p>
                 </div>
 
-                {/* Remediation Box */}
-                <div className="bg-emerald-50/50 border border-emerald-200 rounded-2xl p-4.5 space-y-2">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                      <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
-                    </div>
-                    <span className="text-sm font-extrabold text-gray-900">
-                      How to Fix
-                    </span>
+                <div className="rounded-lg p-3 border border-border-subtle bg-white space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-ink-primary">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-brand-deep" />
+                    <span>How to Fix</span>
                   </div>
-                  <p className="text-xs text-gray-700 leading-relaxed pl-9 font-medium">
+                  <p className="text-xs text-ink-muted leading-relaxed pl-5">
                     {gap.suggestedRemediation}
                   </p>
                 </div>
-
               </div>
             </div>
           ))

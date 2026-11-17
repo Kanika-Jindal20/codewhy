@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Zap, 
-  RefreshCw, 
   HelpCircle, 
   SlidersHorizontal, 
   BookmarkCheck,
@@ -13,6 +12,8 @@ import {
   ArrowRight,
   ShieldAlert,
   Sparkles,
+  GitBranch,
+  Target
 } from 'lucide-react';
 import { SAMPLE_REPO_ECOMMERCE } from '@/lib/graph/sample-repo';
 import { useActiveRepo } from '@/lib/repositories/active-repo-client';
@@ -34,6 +35,7 @@ import { RisksAndChecklist } from '@/components/impact/RisksAndChecklist';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 import { ExportPdfModal } from '@/components/reports/ExportPdfModal';
 import { EngineeringDecisionReport } from '@/types/report';
 import Link from 'next/link';
@@ -83,7 +85,6 @@ export default function ImpactAnalysisPage() {
     return () => { isCancelled = true; };
   }, [activeRepo.repoId]);
 
-  // Check URL query params for targetNodeId pre-selection (e.g. from Architecture Explorer)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -95,7 +96,7 @@ export default function ImpactAnalysisPage() {
         }
       }
     }
-  }, []);
+  }, [availableNodes]);
 
   const handleSaveInvestigation = async () => {
     if (!analysisResult) return;
@@ -184,7 +185,6 @@ export default function ImpactAnalysisPage() {
     };
   };
 
-  // Run initial impact calculation on mount or node change
   useEffect(() => {
     runAnalysis();
   }, [selectedNode.id]);
@@ -224,74 +224,84 @@ export default function ImpactAnalysisPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-12">
-      {/* Page Header Banner */}
-      <section className="relative overflow-hidden bg-gradient-to-r from-red-600 via-red-500 to-orange-500 text-white rounded-3xl p-7 sm:p-9 shadow-xl">
-        <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/10 blur-3xl -mr-16 -mt-16 pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 w-48 h-48 rounded-full bg-yellow-300/20 blur-2xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center shadow-lg shrink-0">
-              <Zap className="w-7 h-7 stroke-[2.5] text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-bold uppercase tracking-wider text-red-100">Pre-Change Safety Tool</span>
-                <span className="px-2 py-0.5 rounded-full bg-white/20 text-white text-xs font-bold border border-white/30">AST Grounded</span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Pre-Change Impact Analysis</h1>
-              <p className="text-sm text-red-100 mt-1 max-w-2xl">
-                Find every component that breaks before you touch the code. Blast radius, caller chains, tests, and risk — all verified.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <span className="text-sm font-bold bg-white/20 border border-white/30 rounded-xl px-4 py-2">
-              🎯 Target: <span className="text-white font-extrabold underline decoration-white/50">{selectedNode.label}</span>
+      {/* Page Header */}
+      <div className="bg-white border border-border-default rounded-xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-brand-emerald/10 text-brand-deep border border-brand-emerald/20">
+              <Zap className="w-3 h-3 text-brand-emerald" />
+              Pre-Change Intelligence
             </span>
-            {analysisResult && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setIsExportModalOpen(true)}
-                icon={<FileText className="w-3.5 h-3.5" />}
-                className="bg-white text-red-600 hover:bg-red-50 border-0 font-bold shadow-md"
-              >
-                Export PDF
-              </Button>
-            )}
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-surface-muted text-ink-muted border border-border-subtle font-mono">
+              AST Grounded
+            </span>
           </div>
+          <h1 className="text-xl sm:text-2xl font-semibold text-ink-primary tracking-tight">
+            Impact Analysis
+          </h1>
+          <p className="text-xs sm:text-sm text-ink-muted mt-1 max-w-2xl">
+            Simulate code changes before making them. Inspect blast radius, caller chains, test requirements, and breaking contract risks.
+          </p>
         </div>
-      </section>
+
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-surface-secondary border border-border-default rounded-lg text-xs">
+            <Target className="w-3.5 h-3.5 text-brand-deep" />
+            <span className="text-ink-muted">Target:</span>
+            <span className="font-mono font-medium text-ink-primary truncate max-w-[180px]">{selectedNode.label}</span>
+          </div>
+          {analysisResult && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsExportModalOpen(true)}
+              icon={<FileText className="w-3.5 h-3.5" />}
+            >
+              Export PDF
+            </Button>
+          )}
+        </div>
+      </div>
 
       {/* 5-Stage Visual Workflow Strip */}
-      <section className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white border border-border-default rounded-xl p-4 shadow-xs">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-500" />
-            <span className="text-sm font-bold text-gray-800">5-Stage Impact Evaluation Pipeline</span>
+            <Sparkles className="w-4 h-4 text-brand-deep" />
+            <span className="text-xs font-semibold text-ink-primary">5-Stage Impact Pipeline</span>
           </div>
-          <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-            {analysisResult ? '✅ All Stages Complete' : '⏳ Stage 4 Running…'}
+          <span className="text-[11px] font-medium text-ink-muted bg-surface-muted px-2.5 py-0.5 rounded-full border border-border-subtle">
+            {analysisResult ? 'All Stages Evaluated' : isLoading ? 'Running AST Pass…' : 'Configuring'}
           </span>
         </div>
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
           {[
-            { step: '1', label: 'Select Target', value: selectedNode.label, color: 'blue', bgFrom: 'from-blue-500', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', icon: '🎯' },
-            { step: '2', label: 'Change Type', value: changeCategory.replace(/_/g, ' '), color: 'violet', bgFrom: 'from-violet-500', bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-700', icon: '⚡' },
-            { step: '3', label: 'Depth Config', value: `${maxDepth} Hops`, color: 'gray', bgFrom: 'from-gray-400', bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', icon: '⚙️' },
-            { step: '4', label: 'AST Analysis', value: isLoading ? 'Computing…' : 'Grounded ✓', color: 'green', bgFrom: 'from-green-500', bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', icon: '🔬' },
-            { step: '5', label: 'Risk Review', value: analysisResult ? `${analysisResult.summary.totalAffected} Affected` : 'Pending', color: 'red', bgFrom: 'from-red-500', bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', icon: '🚨' },
+            { step: '1', label: 'Select Target', value: selectedNode.label, status: 'done' },
+            { step: '2', label: 'Change Type', value: changeCategory.replace(/_/g, ' '), status: 'done' },
+            { step: '3', label: 'Depth Bounds', value: `${maxDepth} Hops`, status: 'done' },
+            { step: '4', label: 'AST Traversal', value: isLoading ? 'Computing…' : 'Deterministic ✓', status: isLoading ? 'active' : 'done' },
+            { step: '5', label: 'Blast Radius', value: analysisResult ? `${analysisResult.summary.totalAffected} Affected` : 'Pending', status: analysisResult ? 'done' : 'pending' },
           ].map((stage, i) => (
-            <div key={i} className={`${stage.bg} ${stage.border} border rounded-xl p-3 text-center`}>
-              <div className="text-lg mb-1">{stage.icon}</div>
-              <div className={`text-[10px] font-extrabold uppercase tracking-wider ${stage.text} mb-1`}>
-                Stage {stage.step} · {stage.label}
+            <div 
+              key={i} 
+              className={`rounded-lg p-2.5 border transition-all ${
+                stage.status === 'done'
+                  ? 'bg-surface-secondary border-border-default'
+                  : stage.status === 'active'
+                  ? 'bg-brand-emerald/5 border-brand-emerald/40 ring-1 ring-brand-emerald/20'
+                  : 'bg-surface-muted/40 border-border-subtle opacity-70'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-mono text-ink-faint uppercase tracking-wider">Stage {stage.step}</span>
+                {stage.status === 'done' && <CheckCircle2 className="w-3 h-3 text-brand-deep" />}
               </div>
-              <div className={`text-xs font-bold text-gray-800 truncate`}>{stage.value}</div>
+              <div className="text-[11px] font-medium text-ink-muted">{stage.label}</div>
+              <div className="text-xs font-semibold text-ink-primary truncate font-mono mt-0.5">{stage.value}</div>
             </div>
           ))}
         </div>
-      </section>
+      </div>
 
       {/* Error Banner */}
       {error && (
@@ -307,7 +317,7 @@ export default function ImpactAnalysisPage() {
             <span>{saveSuccessMessage}</span>
             <Link
               href="/investigations"
-              className="text-emerald-700 underline font-bold ml-2 hover:opacity-80 shrink-0"
+              className="text-brand-deep underline font-medium ml-2 hover:opacity-80 shrink-0"
             >
               Open History &rarr;
             </Link>
@@ -346,10 +356,10 @@ export default function ImpactAnalysisPage() {
       {/* Analysis Output Results */}
       {isLoading ? (
         <div className="space-y-4 pt-4">
-          <Skeleton className="h-32 w-full rounded-2xl" />
+          <Skeleton className="h-32 w-full rounded-xl" />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Skeleton className="h-64 w-full rounded-2xl" />
-            <Skeleton className="h-64 w-full rounded-2xl" />
+            <Skeleton className="h-64 w-full rounded-xl" />
+            <Skeleton className="h-64 w-full rounded-xl" />
           </div>
         </div>
       ) : analysisResult ? (

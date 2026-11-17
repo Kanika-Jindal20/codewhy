@@ -23,19 +23,19 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({ evidence, compact = 
   const isCommit = evidence.type === 'commit' || !!evidence.commitHash;
   const sourceUrl = safeGitHubUrl(evidence.url);
   const directness = evidence.directness ?? (evidence.type === 'co_change_history' ? 'indirect' : 'direct');
-  const directnessLabel = directness === 'direct' ? 'Direct source' : directness === 'indirect' ? 'Inferred relationship' : 'Model interpretation';
+  const directnessLabel = directness === 'direct' ? 'Direct source' : directness === 'indirect' ? 'Inferred' : 'Model interpretation';
   const sourceTypeLabel = evidence.type.replaceAll('_', ' ');
 
   return (
-    <div className="rounded-lg border border-app-border bg-app-surface/50 p-3.5 hover:border-accent-primary/40 transition-colors">
+    <div className="rounded-lg border border-border-default bg-surface-secondary/60 p-3 hover:border-border-strong transition-colors">
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex min-w-0 items-center gap-2">
           {isCommit ? (
-            <GitCommit className="w-4 h-4 text-accent-secondary shrink-0" />
+            <GitCommit className="w-3.5 h-3.5 text-purple-600 shrink-0" />
           ) : (
-            <FileCode className="w-4 h-4 text-accent-primary shrink-0" />
+            <FileCode className="w-3.5 h-3.5 text-brand-deep shrink-0" />
           )}
-          <span className="text-xs font-semibold text-text-primary truncate">
+          <span className="text-xs font-semibold text-ink-primary truncate font-mono">
             {evidence.title}
           </span>
         </div>
@@ -45,9 +45,9 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({ evidence, compact = 
             <Badge variant="warning" size="sm">Demo Data</Badge>
           )}
           {evidence.conflictGroup && <Badge variant="warning" size="sm">Conflict: {evidence.conflictGroup}</Badge>}
-          <Badge variant="default" size="sm">{sourceTypeLabel}</Badge>
-          <Badge variant={directness === 'direct' ? 'outline' : 'warning'} size="sm">
-            {directness === 'direct' ? <ShieldCheck className="w-3 h-3 text-status-success inline mr-1" /> : <AlertTriangle className="w-3 h-3 inline mr-1" />}
+          <Badge variant="outline" size="sm">{sourceTypeLabel}</Badge>
+          <Badge variant={directness === 'direct' ? 'success' : 'warning'} size="sm">
+            {directness === 'direct' ? <ShieldCheck className="w-3 h-3 text-brand-deep inline mr-1" /> : <AlertTriangle className="w-3 h-3 inline mr-1" />}
             {directnessLabel}
           </Badge>
           <button
@@ -55,26 +55,26 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({ evidence, compact = 
             onClick={handleCopy}
             aria-label="Copy evidence reference"
             title="Copy evidence reference"
-            className="p-1 text-text-muted hover:text-text-primary rounded hover:bg-app-surface transition-colors"
+            className="p-1 text-ink-muted hover:text-ink-primary rounded hover:bg-surface-muted transition-colors"
           >
-            {copied ? <Check className="w-3.5 h-3.5 text-status-success" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied ? <Check className="w-3.5 h-3.5 text-brand-deep" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
 
       {evidence.freshness === 'stale' && (
-        <p className="text-[11px] text-status-warning mb-2" role="status">This source may be stale after repository changes.</p>
+        <p className="text-[11px] text-amber-600 mb-2" role="status">This source may be stale after repository changes.</p>
       )}
       {evidence.freshness === 'unknown' && (
-        <p className="text-[11px] text-text-muted mb-2">Source freshness has not been verified.</p>
+        <p className="text-[11px] text-ink-muted mb-2">Source freshness has not been verified.</p>
       )}
 
       {evidence.filePath && (
-        <div className="font-mono text-xs text-text-secondary bg-app-panel px-2.5 py-1 rounded border border-app-border/60 flex items-center justify-between mb-2">
+        <div className="font-mono text-xs text-ink-muted bg-white px-2.5 py-1 rounded border border-border-subtle flex items-center justify-between mb-2">
           <span className="truncate">
             {evidence.filePath}
             {evidence.startLine !== undefined && (
-              <span className="text-accent-primary ml-1">
+              <span className="text-brand-deep font-semibold ml-1">
                 #L{evidence.startLine}{evidence.endLine ? `-L${evidence.endLine}` : ''}
               </span>
             )}
@@ -83,15 +83,15 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({ evidence, compact = 
       )}
 
       {evidence.commitHash && (
-        <div className="font-mono text-xs text-text-secondary mb-2 flex flex-wrap items-center gap-2">
-          <span className="px-1.5 py-0.5 rounded bg-accent-secondary/15 text-accent-secondary border border-accent-secondary/30">
+        <div className="font-mono text-xs text-ink-secondary mb-2 flex flex-wrap items-center gap-2">
+          <span className="px-1.5 py-0.5 rounded bg-surface-muted text-ink-primary border border-border-subtle font-mono">
             {evidence.commitHash.substring(0, 7)}
           </span>
           {evidence.author && (
-            <span className="text-text-muted text-[11px]">{evidence.author}</span>
+            <span className="text-ink-muted text-[11px]">{evidence.author}</span>
           )}
           {evidence.timestamp && (
-            <span className="text-text-muted text-[11px]">
+            <span className="text-ink-faint text-[11px]">
               • {new Date(evidence.timestamp).toLocaleDateString()}
             </span>
           )}
@@ -99,13 +99,13 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({ evidence, compact = 
       )}
 
       {evidence.commitMessage && (
-        <p className="text-xs text-text-secondary italic mb-2">
+        <p className="text-xs text-ink-muted italic mb-2">
           &ldquo;{evidence.commitMessage}&rdquo;
         </p>
       )}
 
       {evidence.snippet && !compact && (
-        <pre className="font-mono text-[11px] leading-relaxed text-text-primary bg-app-bg/80 p-2.5 rounded border border-app-border overflow-x-auto">
+        <pre className="font-mono text-[11px] leading-relaxed text-ink-primary bg-white p-2.5 rounded border border-border-subtle overflow-x-auto">
           <code>{evidence.snippet}</code>
         </pre>
       )}
@@ -115,7 +115,7 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({ evidence, compact = 
           href={sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-[11px] text-accent-primary hover:underline mt-2"
+          className="inline-flex items-center gap-1 text-[11px] text-brand-deep hover:underline mt-1.5 font-medium"
         >
           View verified GitHub source <ExternalLink className="w-3 h-3" />
         </a>

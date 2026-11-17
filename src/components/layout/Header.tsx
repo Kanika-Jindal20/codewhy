@@ -2,86 +2,130 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { GitBranch, RefreshCw, FolderGit2, Menu, HelpCircle } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import {
+  GitBranch,
+  RefreshCw,
+  FolderGit2,
+  Menu,
+  Search,
+  CheckCircle2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 interface HeaderProps {
   currentRepo?: string;
+  branch?: string;
   onRefresh?: () => void;
   isRefreshing?: boolean;
   onToggleMobileMenu?: () => void;
+  onOpenCommandPalette?: () => void;
 }
+
+const ROUTE_LABELS: Record<string, string> = {
+  '/': 'Overview',
+  '/repos': 'Repositories',
+  '/repositories': 'Repositories',
+  '/architecture': 'Architecture Explorer',
+  '/graph': 'Knowledge Graph',
+  '/impact': 'Impact Analysis',
+  '/ask': 'Ask Why',
+  '/investigator': 'Autonomous Investigator',
+  '/simulator': 'Change Simulator',
+  '/pr-reviewer': 'PR Reviewer',
+  '/architecture-health': 'Architecture Health',
+  '/test-gaps': 'Test Gaps',
+  '/gaps': 'Knowledge Gaps',
+  '/timeline': 'Decision Timeline',
+  '/investigations': 'Investigations',
+  '/reports': 'Reports',
+};
 
 export const Header: React.FC<HeaderProps> = ({
   currentRepo = 'acme/commerce-core',
+  branch = 'main',
   onRefresh,
   isRefreshing = false,
   onToggleMobileMenu,
+  onOpenCommandPalette,
 }) => {
+  const pathname = usePathname();
+  const currentTitle = ROUTE_LABELS[pathname] || 'Intelligence';
+
   return (
-    <header className="h-16 px-4 sm:px-6 lg:px-8 bg-white border-b border-app-border flex items-center justify-between shrink-0 z-10 shadow-2xs">
-      {/* Left: Mobile hamburger + Repository & Branch selector */}
-      <div className="flex items-center gap-3">
+    <header className="h-14 px-4 sm:px-6 bg-white border-b border-[#EDEDED] flex items-center justify-between shrink-0 z-10 sticky top-0">
+      {/* Left: Mobile Menu + Breadcrumb Hierarchy */}
+      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
         {onToggleMobileMenu && (
           <button
             type="button"
             onClick={onToggleMobileMenu}
-            className="md:hidden p-2 -ml-1 rounded-lg text-text-secondary hover:text-text-primary hover:bg-[#F4F7FF] transition-colors"
+            className="md:hidden p-1.5 -ml-1 rounded-[6px] text-[#707070] hover:text-[#171717] hover:bg-[#F4F4F5] transition-colors"
             aria-label="Open navigation menu"
           >
-            <Menu className="w-5 h-5" />
+            <Menu className="w-4 h-4" />
           </button>
         )}
 
-        {/* Repository selector */}
-        <Link
-          href="/repos"
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#F8FAFC] border border-app-border text-xs hover:border-[#3B82F6]/50 hover:bg-[#EBF2FF]/30 transition-all shadow-2xs group"
-        >
-          <div className="w-5 h-5 rounded-md bg-blue-500/10 text-[#3B82F6] flex items-center justify-center shrink-0">
-            <FolderGit2 className="w-3.5 h-3.5 stroke-[2]" />
-          </div>
-          <span className="font-bold text-text-primary truncate max-w-[150px] sm:max-w-none group-hover:text-[#3B82F6] transition-colors">
+        {/* Clean Breadcrumb */}
+        <div className="flex items-center gap-1.5 text-xs">
+          <Link
+            href="/repos"
+            className="text-[#707070] hover:text-[#171717] font-medium transition-colors truncate max-w-[120px] sm:max-w-none"
+          >
             {currentRepo}
-          </span>
-        </Link>
-
-        {/* Branch pill */}
-        <div className="hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 font-semibold text-[#8B5CF6]">
-          <GitBranch className="w-3.5 h-3.5 text-[#8B5CF6] shrink-0 stroke-[2]" />
-          <span className="font-mono text-[11px]">main</span>
+          </Link>
+          <span className="text-[#DFDFDF]">/</span>
+          <span className="font-semibold text-[#171717] truncate">{currentTitle}</span>
         </div>
 
-        {/* Verified sync badge with pulse */}
-        <div className="hidden lg:flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 border border-emerald-500/20">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-          <span>AST Verified</span>
+        {/* Branch pill */}
+        <div className="hidden sm:flex items-center gap-1 text-[11px] font-mono text-[#707070] bg-[#F4F4F5] border border-[#EDEDED] px-2 py-0.5 rounded-[4px]">
+          <GitBranch className="w-3 h-3 text-[#9A9A9A]" />
+          <span>{branch}</span>
+        </div>
+
+        {/* AST Verified status indicator */}
+        <div className="hidden lg:flex items-center gap-1.5 text-[11px] font-medium text-[#065F46] bg-[#ECFDF5] border border-[#A7F3D0] px-2 py-0.5 rounded-full">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#3ECF8E] animate-pulse" />
+          <span>AST Grounded</span>
         </div>
       </div>
 
-      {/* Right: Actions */}
-      <div className="flex items-center gap-2.5">
-        <Link href="/ask" className="hidden sm:inline-flex">
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<HelpCircle className="w-3.5 h-3.5 text-[#8B5CF6]" />}
-            className="hover:bg-purple-50 hover:text-[#8B5CF6]"
-          >
-            Ask Why
-          </Button>
-        </Link>
-
-        <Button
-          variant="outline"
-          size="sm"
-          icon={<RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#3B82F6]' : 'text-[#3B82F6]'}`} />}
-          onClick={onRefresh}
-          disabled={isRefreshing}
-          className="border-app-border hover:border-[#3B82F6]/40 hover:bg-[#EBF2FF]/50"
+      {/* Right: Search / Command Palette Trigger & Actions */}
+      <div className="flex items-center gap-2">
+        {/* Command Palette Trigger */}
+        <button
+          type="button"
+          onClick={onOpenCommandPalette}
+          className="flex items-center gap-2 px-2.5 py-1.5 rounded-[6px] bg-[#FAFAFA] hover:bg-[#F4F4F5] border border-[#EDEDED] hover:border-[#DFDFDF] text-xs text-[#707070] transition-colors shadow-2xs"
+          title="Open Command Palette (Cmd+K)"
         >
-          {isRefreshing ? 'Syncing...' : 'Sync Graph'}
-        </Button>
+          <Search className="w-3.5 h-3.5 text-[#9A9A9A]" />
+          <span className="hidden sm:inline">Search or jump to...</span>
+          <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1 py-0.2 text-[10px] font-mono text-[#707070] bg-white border border-[#DFDFDF] rounded-[3px]">
+            ⌘K
+          </kbd>
+        </button>
+
+        {/* Functional Graph Sync Button */}
+        {onRefresh && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            icon={
+              <RefreshCw
+                className={`w-3.5 h-3.5 text-[#171717] ${
+                  isRefreshing ? 'animate-spin text-[#3ECF8E]' : ''
+                }`}
+              />
+            }
+          >
+            <span className="hidden sm:inline">{isRefreshing ? 'Syncing...' : 'Sync Graph'}</span>
+          </Button>
+        )}
       </div>
     </header>
   );

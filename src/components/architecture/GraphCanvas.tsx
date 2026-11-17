@@ -1,33 +1,28 @@
 'use client';
 
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { Loader2, ZoomIn, ZoomOut, RotateCcw, Maximize2, GitBranch } from 'lucide-react';
+import { Loader2, ZoomIn, ZoomOut, RotateCcw, GitBranch, ArrowRight } from 'lucide-react';
 import { VisNode, VisEdge, FilterState, NODE_TYPE_COLORS, EDGE_TYPE_LABELS } from '@/types/architecture';
 import { NodeType, EdgeType } from '@/types/graph';
 
-// ---------------------------------------------------------------------------
-// Edge visual config
-// ---------------------------------------------------------------------------
+// Refined edge stroke styles
 const EDGE_STROKE: Record<EdgeType, { color: string; dash?: string }> = {
-  imports:    { color: '#3B82F6' },
-  calls:      { color: '#10B981' },
-  extends:    { color: '#8B5CF6', dash: '5,3' },
-  implements: { color: '#8B5CF6', dash: '5,3' },
+  imports:    { color: '#DFDFDF' },
+  calls:      { color: '#3ECF8E' },
+  extends:    { color: '#644FC1', dash: '4,3' },
+  implements: { color: '#644FC1', dash: '4,3' },
   tests:      { color: '#F59E0B' },
-  configures: { color: '#64748B', dash: '3,3' },
-  co_changed: { color: '#EF4444', dash: '4,3' },
+  configures: { color: '#9A9A9A', dash: '3,3' },
+  co_changed: { color: '#FF2201', dash: '4,3' },
   supersedes: { color: '#EF4444', dash: '2,4' },
-  defines:    { color: '#0EA5E9' },
-  depends_on: { color: '#6366F1' },
-  modifies:   { color: '#EC4899', dash: '3,2' },
+  defines:    { color: '#054CFF' },
+  depends_on: { color: '#212121' },
+  modifies:   { color: '#C7007E', dash: '3,2' },
 };
 
-const NODE_RADIUS = 26;
-const SELECTED_RADIUS = 32;
+const NODE_RADIUS = 24;
+const SELECTED_RADIUS = 28;
 
-// ---------------------------------------------------------------------------
-// Props
-// ---------------------------------------------------------------------------
 interface GraphCanvasProps {
   nodes: VisNode[];
   edges: VisEdge[];
@@ -40,9 +35,6 @@ interface GraphCanvasProps {
   onExpandNode: (nodeId: string) => void;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 function isNodeVisible(node: VisNode, filters: FilterState): boolean {
   if (filters.nodeTypes.size === 0) return true;
   return filters.nodeTypes.has(node.type as NodeType);
@@ -54,18 +46,17 @@ function isEdgeVisible(edge: VisEdge, filters: FilterState, visibleNodeIds: Set<
   return filters.edgeTypes.has(edge.type as EdgeType);
 }
 
-// Midpoint for edge label placement
-function edgeMid(sx: number, sy: number, tx: number, ty: number) {
-  return { x: (sx + tx) / 2, y: (sy + ty) / 2 };
-}
-
-// Shorten edge endpoints to not overlap node circles
 function shortenEdge(
-  sx: number, sy: number, tx: number, ty: number, r: number
+  sx: number,
+  sy: number,
+  tx: number,
+  ty: number,
+  r: number
 ): { x1: number; y1: number; x2: number; y2: number } {
-  const dx = tx - sx; const dy = ty - sy;
+  const dx = tx - sx;
+  const dy = ty - sy;
   const len = Math.sqrt(dx * dx + dy * dy) || 1;
-  const pad = r + 3;
+  const pad = r + 2;
   return {
     x1: sx + (dx / len) * pad,
     y1: sy + (dy / len) * pad,
@@ -74,9 +65,6 @@ function shortenEdge(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
 export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   nodes,
   edges,
@@ -89,366 +77,256 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   onExpandNode,
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
-  // Default comfortably scaled so nodes don't look tiny
-  const [zoom, setZoom] = useState(1.05);
+  const [zoom, setZoom] = useState(1.0);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
-  const [focusedNodeIdx, setFocusedNodeIdx] = useState<number>(-1);
 
-  // Apply filters safely
-const safeNodes = Array.isArray(nodes) ? nodes : [];
-const safeEdges = Array.isArray(edges) ? edges : [];
+  const safeNodes = Array.isArray(nodes) ? nodes : [];
+  const safeEdges = Array.isArray(edges) ? edges : [];
 
-const visibleNodeSet = new Set(
-  safeNodes
-    .filter(n => isNodeVisible(n, filters))
-    .map(n => n.id)
-);
+  const visibleNodeSet = new Set(
+    safeNodes.filter((n) => isNodeVisible(n, filters)).map((n) => n.id)
+  );
 
-const visibleNodes = safeNodes.filter(n =>
-  visibleNodeSet.has(n.id)
-);
+  const visibleNodes = safeNodes.filter((n) => visibleNodeSet.has(n.id));
+  const visibleEdges = safeEdges.filter((e) => isEdgeVisible(e, filters, visibleNodeSet));
 
-const visibleEdges = safeEdges.filter(e =>
-  isEdgeVisible(e, filters, visibleNodeSet)
-);
-
-  // Reset pan/zoom when nodes change substantially
   useEffect(() => {
     setPan({ x: 0, y: 0 });
-    setZoom(1.05);
+    setZoom(1.0);
   }, [safeNodes.length]);
 
-  // Pan handlers
-  const handleMouseDown = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
-    if ((e.target as Element).tagName !== 'svg' && !(e.target as Element).tagName.includes('rect')) return;
-    setIsDragging(true);
-    setDragStart({ x: e.clientX, y: e.clientY });
-    setPanStart({ x: pan.x, y: pan.y });
-  }, [pan]);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent<SVGSVGElement>) => {
+      if ((e.target as Element).tagName !== 'svg' && !(e.target as Element).tagName.includes('rect')) return;
+      setIsDragging(true);
+      setDragStart({ x: e.clientX, y: e.clientY });
+      setPanStart({ x: pan.x, y: pan.y });
+    },
+    [pan]
+  );
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
-    if (!isDragging) return;
-    setPan({
-      x: panStart.x + (e.clientX - dragStart.x),
-      y: panStart.y + (e.clientY - dragStart.y),
-    });
-  }, [isDragging, dragStart, panStart]);
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<SVGSVGElement>) => {
+      if (!isDragging) return;
+      setPan({
+        x: panStart.x + (e.clientX - dragStart.x),
+        y: panStart.y + (e.clientY - dragStart.y),
+      });
+    },
+    [isDragging, dragStart, panStart]
+  );
 
   const handleMouseUp = useCallback(() => setIsDragging(false), []);
 
-  // Zoom handler: smooth step, never shrinks smaller than 0.75
   const handleWheel = useCallback((e: React.WheelEvent<SVGSVGElement>) => {
     e.preventDefault();
-    const delta = e.deltaY > 0 ? -0.06 : 0.06;
-    setZoom(z => Math.max(0.75, Math.min(2.2, Number((z + delta).toFixed(2)))));
+    const delta = e.deltaY > 0 ? -0.05 : 0.05;
+    setZoom((z) => Math.max(0.75, Math.min(2.0, Number((z + delta).toFixed(2)))));
   }, []);
 
-  // Keyboard navigation through visible nodes
-  const handleSvgKeyDown = (e: React.KeyboardEvent) => {
-    if (visibleNodes.length === 0) return;
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      setFocusedNodeIdx(i => (i + 1) % visibleNodes.length);
-    } else if (e.key === 'Enter' && focusedNodeIdx >= 0) {
-      onSelectNode(visibleNodes[focusedNodeIdx].id);
-    } else if (e.key === 'Escape') {
-      onSelectNode('');
-      setFocusedNodeIdx(-1);
-    }
-  };
-
-  const zoomIn = () => setZoom(z => Math.min(Number((z + 0.15).toFixed(2)), 2.2));
-  const zoomOut = () => setZoom(z => Math.max(Number((z - 0.15).toFixed(2)), 0.75));
-  const resetView = () => { setZoom(1.05); setPan({ x: 0, y: 0 }); };
-
-  // ---------------------------------------------------------------------------
-  // Render states
-  // ---------------------------------------------------------------------------
-  if (error) {
-    return (
-      <div className="flex-1 bg-white rounded-2xl border border-red-200 flex items-center justify-center min-h-[460px] p-6">
-        <div className="text-center text-sm text-red-600 space-y-2">
-          <GitBranch className="w-8 h-8 mx-auto opacity-70" />
-          <div className="font-extrabold text-base">Graph query failed</div>
-          <div className="text-xs text-gray-500 max-w-xs">{error}</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex-1 bg-white rounded-2xl border border-blue-100 flex items-center justify-center min-h-[460px]">
-        <div className="flex flex-col items-center gap-3 text-blue-600">
-          <Loader2 className="w-9 h-9 animate-spin" />
-          <span className="text-xs font-bold text-gray-700">Loading graph neighborhood…</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (safeNodes.length === 0) {
-    return (
-      <div className="flex-1 bg-white rounded-2xl border border-gray-200 flex items-center justify-center min-h-[460px]">
-        <div className="text-center text-sm text-gray-500 space-y-2">
-          <GitBranch className="w-8 h-8 mx-auto opacity-40 text-gray-400" />
-          <div className="font-bold text-gray-800">No graph data available</div>
-          <div className="text-xs text-gray-500">Try searching for a file or symbol above.</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (visibleNodes.length === 0) {
-    return (
-      <div className="flex-1 bg-white rounded-2xl border border-gray-200 flex items-center justify-center min-h-[460px]">
-        <div className="text-center text-sm text-gray-500 space-y-2">
-          <div className="font-bold text-gray-800">All nodes hidden by filters</div>
-          <div className="text-xs text-gray-500">Clear filters to restore graph visibility.</div>
-        </div>
-      </div>
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Main SVG render
-  // ---------------------------------------------------------------------------
   return (
-    <div className="flex-1 flex flex-col bg-slate-50/70 rounded-2xl border border-blue-100 overflow-hidden min-h-[500px] relative shadow-inner">
-      {/* Controls bar */}
-      <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-white/95 border border-gray-200 rounded-xl px-2.5 py-1.5 shadow-md backdrop-blur-md">
-        <button onClick={zoomIn} title="Zoom in" className="p-1.5 text-gray-600 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
-          <ZoomIn className="w-4 h-4 stroke-[2.2]" />
-        </button>
-        <span className="text-xs font-bold text-gray-800 w-11 text-center select-none">{Math.round(zoom * 100)}%</span>
-        <button onClick={zoomOut} title="Zoom out" className="p-1.5 text-gray-600 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
-          <ZoomOut className="w-4 h-4 stroke-[2.2]" />
-        </button>
-        <div className="w-px h-5 bg-gray-200 mx-1" aria-hidden />
-        <button onClick={resetView} title="Reset view (100%)" className="p-1.5 text-gray-600 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
-          <RotateCcw className="w-4 h-4 stroke-[2.2]" />
-        </button>
+    <div className="relative w-full h-[540px] bg-white rounded-[12px] border border-[#EDEDED] overflow-hidden select-none shadow-2xs">
+      {/* Background Subtle Dot Pattern */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-40">
+        <defs>
+          <pattern id="graph-dot-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+            <circle cx="2" cy="2" r="0.8" fill="#DFDFDF" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#graph-dot-grid)" />
+      </svg>
+
+      {/* Floating Canvas Controls */}
+      <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-white/95 border border-[#EDEDED] rounded-[8px] p-1 shadow-sm backdrop-blur-xs">
         <button
-          onClick={() => svgRef.current?.requestFullscreen?.()}
-          title="Full screen"
-          className="p-1.5 text-gray-600 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+          type="button"
+          onClick={() => setZoom((z) => Math.min(2.0, Number((z + 0.1).toFixed(2))))}
+          aria-label="Zoom in"
+          className="p-1 rounded-[4px] text-[#707070] hover:text-[#171717] hover:bg-[#F4F4F5] transition-colors"
         >
-          <Maximize2 className="w-4 h-4 stroke-[2.2]" />
+          <ZoomIn className="w-3.5 h-3.5" />
+        </button>
+        <span className="font-mono text-[11px] text-[#707070] w-10 text-center select-none">
+          {Math.round(zoom * 100)}%
+        </span>
+        <button
+          type="button"
+          onClick={() => setZoom((z) => Math.max(0.75, Number((z - 0.1).toFixed(2))))}
+          aria-label="Zoom out"
+          className="p-1 rounded-[4px] text-[#707070] hover:text-[#171717] hover:bg-[#F4F4F5] transition-colors"
+        >
+          <ZoomOut className="w-3.5 h-3.5" />
+        </button>
+        <div className="w-px h-3.5 bg-[#EDEDED] mx-0.5" />
+        <button
+          type="button"
+          onClick={() => {
+            setZoom(1.0);
+            setPan({ x: 0, y: 0 });
+          }}
+          aria-label="Reset zoom and pan"
+          className="p-1 rounded-[4px] text-[#707070] hover:text-[#171717] hover:bg-[#F4F4F5] transition-colors"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Truncation warning */}
-      {truncated && (
-        <div className="absolute top-3 left-3 z-10 px-3 py-1.5 bg-amber-50 border border-amber-300 rounded-xl text-xs font-bold text-amber-900 flex items-center gap-2 shadow-sm">
-          <span>⚠️</span> Graph limited to {safeNodes.length} nodes. Expand nodes to explore further.
+      {/* Bottom Hint */}
+      <div className="absolute bottom-3 left-3 z-10 hidden sm:flex items-center gap-2 text-[11px] text-[#707070] bg-white/90 border border-[#EDEDED] px-2.5 py-1 rounded-[6px] shadow-2xs">
+        <span>Click node to inspect</span>
+        <span className="text-[#DFDFDF]">·</span>
+        <span>Double-click to expand 1-hop reach</span>
+      </div>
+
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="absolute inset-0 bg-white/80 backdrop-blur-2xs flex items-center justify-center z-20">
+          <div className="flex items-center gap-2 text-xs font-medium text-[#171717]">
+            <Loader2 className="w-4 h-4 animate-spin text-[#3ECF8E]" />
+            <span>Computing layout...</span>
+          </div>
         </div>
       )}
 
-      {/* Stats bar */}
-      <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2.5 text-xs font-bold text-gray-600 bg-white/90 border border-gray-200 rounded-xl px-3 py-1.5 shadow-sm backdrop-blur-sm">
-        <span className="text-blue-600">{visibleNodes.length} nodes</span>
-        <span className="text-gray-300">·</span>
-        <span className="text-indigo-600">{visibleEdges.length} relationships</span>
-        {isDragging && <span className="text-emerald-600 animate-pulse">● panning</span>}
-      </div>
+      {/* Error Message */}
+      {error && (
+        <div className="absolute top-4 left-4 right-4 z-20">
+          <div className="p-3 bg-[#FEF2F2] border border-[#FECACA] rounded-[8px] text-xs text-[#991B1B]">
+            {error}
+          </div>
+        </div>
+      )}
 
+      {/* SVG Canvas Element */}
       <svg
         ref={svgRef}
-        className={`flex-1 w-full h-full ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+        className="w-full h-full cursor-grab active:cursor-grabbing"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
-        onKeyDown={handleSvgKeyDown}
-        tabIndex={0}
-        role="application"
-        aria-label={`Architecture graph with ${visibleNodes.length} nodes and ${visibleEdges.length} edges. Tab to cycle nodes, Enter to select, double-click to expand.`}
-        style={{ outline: 'none' }}
       >
         <defs>
-          {/* Subtle grid pattern for engineering dashboard feel */}
-          <pattern id="graph-grid" width="30" height="30" patternUnits="userSpaceOnUse">
-            <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#E2E8F0" strokeWidth="0.8" opacity="0.6" />
-          </pattern>
-
-          {/* Node drop shadow for 3D depth */}
-          <filter id="node-shadow" x="-20%" y="-20%" width="150%" height="150%">
-            <feDropShadow dx="0" dy="3" stdDeviation="3" floodOpacity="0.15" />
-          </filter>
-          <filter id="selected-shadow" x="-30%" y="-30%" width="160%" height="160%">
-            <feDropShadow dx="0" dy="5" stdDeviation="6" floodOpacity="0.25" />
-          </filter>
-
-          {/* Arrowhead markers with high visibility */}
-          {Object.entries(EDGE_STROKE).map(([type, style]) => (
-            <marker
-              key={type}
-              id={`arrow-${type}`}
-              markerWidth="10"
-              markerHeight="10"
-              refX="8"
-              refY="3.5"
-              orient="auto"
-            >
-              <polygon points="0 0, 8 3.5, 0 7" fill={style.color} opacity="0.9" />
-            </marker>
-          ))}
+          <marker
+            id="edge-arrow"
+            viewBox="0 0 10 10"
+            refX="9"
+            refY="5"
+            markerWidth="5"
+            markerHeight="5"
+            orient="auto"
+          >
+            <path d="M 0 1 L 9 5 L 0 9 z" fill="#C7C7C7" />
+          </marker>
+          <marker
+            id="edge-arrow-selected"
+            viewBox="0 0 10 10"
+            refX="9"
+            refY="5"
+            markerWidth="5"
+            markerHeight="5"
+            orient="auto"
+          >
+            <path d="M 0 1 L 9 5 L 0 9 z" fill="#3ECF8E" />
+          </marker>
         </defs>
 
-        {/* Background Grid */}
-        <rect
-          x="0" y="0" width="100%" height="100%"
-          fill="url(#graph-grid)"
-          className="cursor-grab"
-        />
-
-        {/* Graph Transform Group (with smooth transition when not dragging) */}
-        <g
-          transform={`translate(${pan.x},${pan.y}) scale(${zoom})`}
-          style={{
-            transition: isDragging ? 'none' : 'transform 0.12s cubic-bezier(0.16, 1, 0.3, 1)',
-          }}
-        >
+        <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
           {/* Edges */}
-          {visibleEdges.map(edge => {
-            const style = EDGE_STROKE[edge.type] ?? EDGE_STROKE.imports;
-            const srcR = edge.sourceId === selectedNodeId ? SELECTED_RADIUS : NODE_RADIUS;
-            const tgtR = edge.targetId === selectedNodeId ? SELECTED_RADIUS : NODE_RADIUS;
-            const { x1, y1 } = shortenEdge(
-              edge.sourceNode.x, edge.sourceNode.y,
-              edge.targetNode.x, edge.targetNode.y,
-              srcR,
+          {visibleEdges.map((edge) => {
+            const isConnectedToSelected =
+              edge.sourceId === selectedNodeId || edge.targetId === selectedNodeId;
+            const strokeConfig = EDGE_STROKE[edge.type] || { color: '#DFDFDF' };
+            const strokeColor = isConnectedToSelected ? '#3ECF8E' : strokeConfig.color;
+            const strokeWidth = isConnectedToSelected ? 2 : 1.25;
+
+            const { x1, y1, x2, y2 } = shortenEdge(
+              edge.sourceNode.x,
+              edge.sourceNode.y,
+              edge.targetNode.x,
+              edge.targetNode.y,
+              NODE_RADIUS
             );
-            const _ = shortenEdge(
-              edge.sourceNode.x, edge.sourceNode.y,
-              edge.targetNode.x, edge.targetNode.y,
-              tgtR,
-            );
-            const mid = edgeMid(x1, y1, _.x2, _.y2);
 
             return (
-              <g key={edge.id} className="transition-opacity hover:opacity-100">
+              <g key={edge.id} className="transition-opacity">
                 <line
-                  x1={x1} y1={y1} x2={_.x2} y2={_.y2}
-                  stroke={style.color}
-                  strokeWidth={2}
-                  strokeOpacity={0.7}
-                  strokeDasharray={style.dash}
-                  markerEnd={`url(#arrow-${edge.type})`}
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke={strokeColor}
+                  strokeWidth={strokeWidth}
+                  strokeDasharray={strokeConfig.dash}
+                  markerEnd={isConnectedToSelected ? 'url(#edge-arrow-selected)' : 'url(#edge-arrow)'}
                 />
-                {/* Edge relationship pill */}
-                <g transform={`translate(${mid.x},${mid.y})`}>
-                  <rect
-                    x="-24" y="-8"
-                    width="48" height="16"
-                    rx="8"
-                    fill="#FFFFFF"
-                    stroke={style.color}
-                    strokeWidth="1"
-                    opacity="0.9"
-                  />
-                  <text
-                    textAnchor="middle"
-                    y="3.5"
-                    fontSize="8.5"
-                    fontWeight="700"
-                    fill={style.color}
-                    style={{ pointerEvents: 'none', userSelect: 'none' }}
-                  >
-                    {EDGE_TYPE_LABELS[edge.type]}
-                  </text>
-                </g>
               </g>
             );
           })}
 
           {/* Nodes */}
-          {visibleNodes.map((node, idx) => {
+          {visibleNodes.map((node) => {
             const isSelected = node.id === selectedNodeId;
-            const isFocused = idx === focusedNodeIdx;
             const r = isSelected ? SELECTED_RADIUS : NODE_RADIUS;
-            const color = NODE_TYPE_COLORS[node.type as NodeType] ?? '#3B82F6';
+            const color = NODE_TYPE_COLORS[node.type] || '#707070';
 
             return (
               <g
                 key={node.id}
-                transform={`translate(${node.x},${node.y})`}
+                transform={`translate(${node.x}, ${node.y})`}
                 onClick={() => onSelectNode(node.id)}
                 onDoubleClick={() => onExpandNode(node.id)}
-                style={{ cursor: 'pointer' }}
-                role="button"
-                aria-label={`${node.label} (${node.type}) — click to select, double-click to expand`}
-                tabIndex={-1}
+                className="cursor-pointer group"
               >
-                {/* Outer Glow / Focus Ring */}
-                {(isSelected || isFocused) && (
+                {/* Emerald halo if selected */}
+                {isSelected && (
                   <circle
-                    r={r + 8}
+                    r={r + 6}
                     fill="none"
-                    stroke={color}
-                    strokeWidth={isSelected ? 3 : 1.5}
-                    opacity={isSelected ? 0.6 : 0.3}
+                    stroke="#3ECF8E"
+                    strokeWidth="2.5"
+                    strokeOpacity="0.4"
                     className="animate-pulse"
                   />
                 )}
 
-                {/* Node Solid Body with 3D Drop Shadow */}
+                {/* Node Circle */}
                 <circle
                   r={r}
                   fill="#FFFFFF"
-                  stroke={color}
-                  strokeWidth={isSelected ? 3.5 : 2.5}
-                  filter={isSelected ? 'url(#selected-shadow)' : 'url(#node-shadow)'}
+                  stroke={isSelected ? '#3ECF8E' : '#DFDFDF'}
+                  strokeWidth={isSelected ? '2' : '1.5'}
+                  className="transition-colors group-hover:stroke-[#171717]"
                 />
 
-                {/* Inner Colored Accent Disc */}
-                <circle
-                  r={r - 7}
-                  fill={color}
-                  opacity={isSelected ? 0.25 : 0.15}
-                />
-                <circle
-                  r={5}
-                  fill={color}
-                />
+                {/* Internal Type Dot */}
+                <circle cx={0} cy={-4} r={4} fill={color} />
 
-                {/* Node Label (Clean Normal Font, Never Typewriter) */}
+                {/* Centered Monospace Symbol / Type Initials */}
                 <text
+                  x={0}
+                  y={8}
                   textAnchor="middle"
-                  dy={r + 16}
-                  fontSize="11"
-                  fill="#0F172A"
-                  fontWeight="800"
-                  style={{
-                    userSelect: 'none',
-                    pointerEvents: 'none',
-                    paintOrder: 'stroke',
-                    stroke: '#FFFFFF',
-                    strokeWidth: 3,
-                    strokeLinejoin: 'round',
-                  }}
+                  className="font-mono text-[9px] font-semibold fill-[#171717] select-none pointer-events-none"
                 >
-                  {node.label.length > 20 ? node.label.slice(0, 18) + '…' : node.label}
+                  {node.type.slice(0, 3).toUpperCase()}
                 </text>
 
-                {/* Node Type Pill Underneath */}
+                {/* Label text below node */}
                 <text
+                  x={0}
+                  y={r + 14}
                   textAnchor="middle"
-                  dy={r + 28}
-                  fontSize="9"
-                  fill={color}
-                  fontWeight="700"
-                  style={{ userSelect: 'none', pointerEvents: 'none' }}
+                  className={`font-sans text-[11px] select-none pointer-events-none ${
+                    isSelected ? 'font-semibold fill-[#171717]' : 'font-normal fill-[#707070]'
+                  }`}
                 >
-                  {node.type.toUpperCase()}
+                  {node.label.length > 18 ? `${node.label.slice(0, 16)}…` : node.label}
                 </text>
-
-                {/* SVG Title Tooltip */}
-                <title>{`${node.label} · ${node.type} · ${node.filePath}`}</title>
               </g>
             );
           })}
