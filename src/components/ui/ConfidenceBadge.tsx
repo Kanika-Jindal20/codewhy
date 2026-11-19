@@ -15,41 +15,37 @@ export const ConfidenceBadge: React.FC<ConfidenceBadgeProps> = ({
 }) => {
   const config = {
     high: {
-      icon: <CheckCircle2 className="w-3 h-3 text-[#10B981]" />,
+      icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />,
       label: 'High evidence',
-      badgeClass: 'bg-[#ECFDF5] text-[#065F46] border-[#A7F3D0]',
+      badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     },
     medium: {
-      icon: <AlertTriangle className="w-3 h-3 text-[#F59E0B]" />,
+      icon: <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />,
       label: 'Partial evidence',
-      badgeClass: 'bg-[#FFFBEB] text-[#92400E] border-[#FDE68A]',
+      badgeClass: 'bg-amber-50 text-amber-800 border-amber-200',
     },
     low: {
-      icon: <AlertCircle className="w-3 h-3 text-[#EF4444]" />,
+      icon: <AlertCircle className="w-3.5 h-3.5 text-rose-600" />,
       label: 'Limited evidence',
-      badgeClass: 'bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]',
+      badgeClass: 'bg-rose-50 text-rose-700 border-rose-200',
     },
     insufficient_evidence: {
-      icon: <HelpCircle className="w-3 h-3 text-[#707070]" />,
-      label: 'Insufficient',
-      badgeClass: 'bg-[#F4F4F5] text-[#707070] border-[#EDEDED]',
+      icon: <HelpCircle className="w-3.5 h-3.5 text-slate-500" />,
+      label: 'Insufficient Evidence',
+      badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
     },
-  }[level] || {
-    icon: <HelpCircle className="w-3 h-3 text-[#707070]" />,
-    label: 'Heuristic',
-    badgeClass: 'bg-[#F4F4F5] text-[#707070] border-[#EDEDED]',
-  };
+  }[level];
 
-  const percentage = score !== undefined ? `${Math.round(score * 100)}%` : undefined;
+  const scoreTitle = score !== undefined ? 'Heuristic evidence-quality label; this score is not a calibrated probability.' : undefined;
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border ${config.badgeClass} ${className}`}
-      title={score !== undefined ? `Confidence score: ${score}` : undefined}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border font-mono ${config.badgeClass} ${className}`}
+      title={scoreTitle}
     >
       {config.icon}
       <span>{config.label}</span>
-      {percentage && <span className="font-mono text-[10px] opacity-75">{percentage}</span>}
+      {score !== undefined && <span className="text-[9px] opacity-75">heuristic</span>}
     </span>
   );
 };

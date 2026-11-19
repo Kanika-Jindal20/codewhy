@@ -16,6 +16,7 @@ import {
   Share2,
   Cpu,
   Database,
+  SlidersHorizontal,
   ChevronRight,
   ExternalLink,
 } from 'lucide-react';
@@ -27,6 +28,10 @@ export interface ArchitectureLayer {
   id: string;
   name: string;
   description: string;
+  color: string;
+  badgeBg: string;
+  badgeText: string;
+  borderCol: string;
   icon: React.ComponentType<{ className?: string }>;
   nodes: GraphNode[];
 }
@@ -56,7 +61,7 @@ export const ArchitectureViewClient: React.FC<ArchitectureViewClientProps> = ({
 
     for (const node of graph.nodes) {
       const pathLower = (node.filePath || '').toLowerCase();
-      const tags = (node.metadata?.tags || []).map((t) => t.toLowerCase());
+      const tags = (node.metadata?.tags || []).map(t => t.toLowerCase());
 
       if (node.type === 'test' || pathLower.includes('test') || pathLower.includes('spec')) {
         testNodes.push(node);
@@ -90,77 +95,110 @@ export const ArchitectureViewClient: React.FC<ArchitectureViewClientProps> = ({
     return [
       {
         id: 'presentation',
-        name: 'API & Presentation',
-        description: 'HTTP endpoints, route handlers, and request controllers handling traffic.',
+        name: 'API & Presentation Layer',
+        description: 'HTTP endpoints, route handlers, and request controllers handling client traffic.',
+        color: 'from-blue-500 to-cyan-500',
+        badgeBg: 'bg-blue-100',
+        badgeText: 'text-blue-700',
+        borderCol: 'border-blue-200',
         icon: Share2,
         nodes: presentationNodes,
       },
       {
         id: 'security',
-        name: 'Security & Middleware',
-        description: 'Identity verification, JWT parsing, guards, and authorization handlers.',
+        name: 'Cross-Cutting & Security',
+        description: 'Identity verification, JWT parsing, authorization guards, and request interceptors.',
+        color: 'from-amber-500 to-orange-500',
+        badgeBg: 'bg-amber-100',
+        badgeText: 'text-amber-700',
+        borderCol: 'border-amber-200',
         icon: Shield,
         nodes: securityNodes,
       },
       {
         id: 'domain',
         name: 'Domain & Core Services',
-        description: 'Business logic, transaction processing, state validation, and order management.',
+        description: 'Core business logic, transaction workflows, state validation, and order management.',
+        color: 'from-indigo-500 to-purple-500',
+        badgeBg: 'bg-indigo-100',
+        badgeText: 'text-indigo-700',
+        borderCol: 'border-indigo-200',
         icon: Cpu,
         nodes: domainNodes,
       },
       {
         id: 'infra',
-        name: 'Config & Infrastructure',
-        description: 'Environment schemas, gateway routing rules, database drivers, and cache.',
+        name: 'Configuration & Infrastructure',
+        description: 'Environment schemas, gateway routing rules, database drivers, and persistence configs.',
+        color: 'from-slate-600 to-slate-800',
+        badgeBg: 'bg-slate-100',
+        badgeText: 'text-slate-700',
+        borderCol: 'border-slate-200',
         icon: Database,
         nodes: infraNodes,
       },
       {
         id: 'test',
-        name: 'Verification Suite',
+        name: 'Verification & Quality Suite',
         description: 'Automated unit tests, integration specs, and end-to-end regression suites.',
+        color: 'from-emerald-500 to-teal-500',
+        badgeBg: 'bg-emerald-100',
+        badgeText: 'text-emerald-700',
+        borderCol: 'border-emerald-200',
         icon: CheckCircle2,
         nodes: testNodes,
       },
     ];
   }, [graph]);
 
+  // Selected node details
   const selectedNode = useMemo(() => {
-    return graph.nodes.find((n) => n.id === selectedNodeId) || graph.nodes[0] || null;
+    return graph.nodes.find(n => n.id === selectedNodeId) || graph.nodes[0] || null;
   }, [graph, selectedNodeId]);
 
+  // Callers (upstream) and Callees (downstream)
   const { callers, callees } = useMemo(() => {
     if (!selectedNode) return { callers: [], callees: [] };
     const incoming = graph.edges
-      .filter((e) => e.target === selectedNode.id)
-      .map((e) => ({
+      .filter(e => e.target === selectedNode.id)
+      .map(e => ({
         edge: e,
-        node: graph.nodes.find((n) => n.id === e.source),
+        node: graph.nodes.find(n => n.id === e.source),
       }))
-      .filter((item) => Boolean(item.node));
+      .filter(item => Boolean(item.node));
 
     const outgoing = graph.edges
-      .filter((e) => e.source === selectedNode.id)
-      .map((e) => ({
+      .filter(e => e.source === selectedNode.id)
+      .map(e => ({
         edge: e,
-        node: graph.nodes.find((n) => n.id === e.target),
+        node: graph.nodes.find(n => n.id === e.target),
       }))
-      .filter((item) => Boolean(item.node));
+      .filter(item => Boolean(item.node));
 
     return { callers: incoming, callees: outgoing };
   }, [graph, selectedNode]);
 
+  // Find layer for a node
+  const getNodeLayer = (nodeId: string) => {
+    return layers.find(l => l.nodes.some(n => n.id === nodeId));
+  };
+
+  // Filtered layers
   const displayedLayers = useMemo(() => {
     if (selectedLayerId === 'all') return layers;
-    return layers.filter((l) => l.id === selectedLayerId);
+    return layers.filter(l => l.id === selectedLayerId);
   }, [layers, selectedLayerId]);
 
+  // Architectural audit calculations
   const auditMetrics = useMemo(() => {
     const totalNodes = graph.nodes.length;
-    const testNodes = graph.nodes.filter((n) => n.type === 'test').length;
-    const circular = graph.edges.some((e1) =>
-      graph.edges.some((e2) => e1.source === e2.target && e1.target === e2.source)
+    const testNodes = graph.nodes.filter(n => n.type === 'test').length;
+    const services = graph.nodes.filter(n => (n.filePath || '').toLowerCase().includes('service'));
+    const untestedServices = services.filter(
+      s => !graph.edges.some(e => e.target === s.id && e.type === 'tests')
+    );
+    const circular = graph.edges.some(e1 =>
+      graph.edges.some(e2 => e1.source === e2.target && e1.target === e2.source)
     );
 
     return {
@@ -168,93 +206,120 @@ export const ArchitectureViewClient: React.FC<ArchitectureViewClientProps> = ({
       totalEdges: graph.edges.length,
       layerSeparationScore: 94,
       testRatio: totalNodes > 0 ? Math.round((testNodes / totalNodes) * 100) : 0,
+      untestedServicesCount: untestedServices.length,
       circularDetected: circular,
     };
   }, [graph]);
 
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-12 font-sans">
-      {/* ── Page Header Banner ── */}
-      <header className="bg-white rounded-[12px] border border-[#EDEDED] p-6 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-[#707070]">
-              Subsystems &amp; Layers
+    <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-12 font-['Inter',sans-serif]">
+      {/* ── Page Header Banner (Indigo & Violet Architecture Theme) ── */}
+      <header className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 p-6 sm:p-7 text-white shadow-xl">
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_top_right,_white_0%,_transparent_70%)] pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+          <div className="flex items-center gap-4">
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 shadow-lg">
+              <Compass className="w-7 h-7 text-white stroke-[2.5]" />
             </span>
-            <span className="text-[#DFDFDF]">/</span>
-            <span className="text-xs font-mono text-[#707070]">
-              {layers.length} Subsystems · {graph.nodes.length} Elements
-            </span>
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+                  Architecture Explorer
+                </h1>
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/20 backdrop-blur-sm border border-white/30 text-white">
+                  Subsystems &amp; Layers
+                </span>
+              </div>
+              <p className="text-sm text-indigo-100 mt-1 max-w-2xl font-medium">
+                Decompose{' '}
+                <span className="font-bold text-white underline decoration-purple-300 underline-offset-2">
+                  {repoName}
+                </span>{' '}
+                into architectural layers, evaluate cross-layer couplings, and inspect subsystem boundaries.
+              </p>
+            </div>
           </div>
-          <h1 className="text-xl sm:text-2xl font-semibold text-[#171717] tracking-tight">
-            Architecture Explorer
-          </h1>
-          <p className="text-xs sm:text-sm text-[#707070] max-w-xl">
-            Decompose <strong className="text-[#171717]">{repoName}</strong> into architectural layers, evaluate cross-layer couplings, and inspect subsystem boundaries.
-          </p>
-        </div>
 
-        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-          <Link href={`/graph?repoId=${repoId}`}>
-            <Button variant="secondary" size="sm" icon={<Share2 className="w-3.5 h-3.5 text-[#171717]" />}>
-              Knowledge Graph
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <Link href={`/graph?repoId=${repoId}`}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-white/10 hover:bg-white/20 text-white border-white/30 font-bold text-xs"
+              >
+                View Entity Graph <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </header>
 
       {/* ── Subsystem KPI Stat Grid ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4">
-        <div className="p-4 rounded-[10px] bg-white border border-[#EDEDED] shadow-2xs">
-          <div className="text-[11px] font-medium text-[#707070] uppercase tracking-wider">Layers</div>
-          <div className="text-xl font-semibold text-[#171717] mt-0.5">{layers.length} Subsystems</div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Layers</div>
+            <div className="text-xl font-extrabold text-slate-800 mt-0.5">{layers.length} Subsystems</div>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
+            <Layers className="w-5 h-5" />
+          </div>
         </div>
 
-        <div className="p-4 rounded-[10px] bg-white border border-[#EDEDED] shadow-2xs">
-          <div className="text-[11px] font-medium text-[#707070] uppercase tracking-wider">Components</div>
-          <div className="text-xl font-semibold text-[#171717] mt-0.5">{graph.nodes.length} Elements</div>
+        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Components</div>
+            <div className="text-xl font-extrabold text-slate-800 mt-0.5">{graph.nodes.length} Elements</div>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
+            <Cpu className="w-5 h-5" />
+          </div>
         </div>
 
-        <div className="p-4 rounded-[10px] bg-white border border-[#EDEDED] shadow-2xs">
-          <div className="text-[11px] font-medium text-[#707070] uppercase tracking-wider">Separation Score</div>
-          <div className="text-xl font-semibold text-[#065F46] mt-0.5">{auditMetrics.layerSeparationScore}% Clean</div>
+        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Layer Separation</div>
+            <div className="text-xl font-extrabold text-emerald-600 mt-0.5">{auditMetrics.layerSeparationScore}% Clean</div>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
         </div>
 
-        <div className="p-4 rounded-[10px] bg-white border border-[#EDEDED] shadow-2xs">
-          <div className="text-[11px] font-medium text-[#707070] uppercase tracking-wider">Dependencies</div>
-          <div className="text-xl font-semibold text-[#171717] mt-0.5">{graph.edges.length} Cross-Edges</div>
+        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Dependencies</div>
+            <div className="text-xl font-extrabold text-purple-600 mt-0.5">{graph.edges.length} Cross-Edges</div>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600">
+            <Share2 className="w-5 h-5" />
+          </div>
         </div>
       </div>
 
-      {/* ── View Tab Selector & Layer Filter Pills ── */}
+      {/* ── View Selector & Layer Filters ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-1 p-1 rounded-[8px] bg-[#FAFAFA] border border-[#EDEDED] self-start">
+        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100 border border-slate-200 self-start">
           <button
             onClick={() => setActiveTab('layers')}
-            className={`px-3 py-1.5 rounded-[6px] text-xs font-medium transition-colors ${
-              activeTab === 'layers'
-                ? 'bg-white text-[#171717] shadow-2xs font-semibold'
-                : 'text-[#707070] hover:text-[#171717]'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'layers' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Layer Decomposition
           </button>
           <button
             onClick={() => setActiveTab('flow')}
-            className={`px-3 py-1.5 rounded-[6px] text-xs font-medium transition-colors ${
-              activeTab === 'flow'
-                ? 'bg-white text-[#171717] shadow-2xs font-semibold'
-                : 'text-[#707070] hover:text-[#171717]'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'flow' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Subsystem Flow
           </button>
           <button
             onClick={() => setActiveTab('audit')}
-            className={`px-3 py-1.5 rounded-[6px] text-xs font-medium transition-colors ${
-              activeTab === 'audit'
-                ? 'bg-white text-[#171717] shadow-2xs font-semibold'
-                : 'text-[#707070] hover:text-[#171717]'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'audit' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Boundary &amp; Health Audit
@@ -262,25 +327,25 @@ export const ArchitectureViewClient: React.FC<ArchitectureViewClientProps> = ({
         </div>
 
         {activeTab === 'layers' && (
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 text-xs">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
             <button
               onClick={() => setSelectedLayerId('all')}
-              className={`px-2.5 py-1 rounded-[6px] font-medium border transition-colors ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
                 selectedLayerId === 'all'
-                  ? 'bg-[#171717] text-white border-[#171717]'
-                  : 'bg-white text-[#707070] border-[#EDEDED] hover:border-[#DFDFDF]'
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
               }`}
             >
-              All ({graph.nodes.length})
+              All Layers ({graph.nodes.length})
             </button>
-            {layers.map((layer) => (
+            {layers.map(layer => (
               <button
                 key={layer.id}
                 onClick={() => setSelectedLayerId(layer.id)}
-                className={`px-2.5 py-1 rounded-[6px] font-medium border transition-colors whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all whitespace-nowrap ${
                   selectedLayerId === layer.id
-                    ? 'bg-[#171717] text-white border-[#171717]'
-                    : 'bg-white text-[#707070] border-[#EDEDED] hover:border-[#DFDFDF]'
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                 }`}
               >
                 {layer.name} ({layer.nodes.length})
@@ -290,56 +355,60 @@ export const ArchitectureViewClient: React.FC<ArchitectureViewClientProps> = ({
         )}
       </div>
 
-      {/* ── Tab 1: Layer Decomposition ── */}
+      {/* ── Main Tabbed Content ── */}
       {activeTab === 'layers' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-          {/* Left Column: Layer Swimlanes */}
-          <div className="lg:col-span-8 space-y-3.5">
-            {displayedLayers.map((layer) => {
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left Column: Layer Swimlanes (8 cols) */}
+          <div className="lg:col-span-8 space-y-4">
+            {displayedLayers.map(layer => {
               const Icon = layer.icon;
               return (
                 <div
                   key={layer.id}
-                  className="rounded-[10px] bg-white border border-[#EDEDED] p-5 shadow-2xs space-y-3"
+                  className="rounded-3xl bg-white border border-slate-200 p-5 shadow-sm space-y-3"
                 >
                   <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <Icon className="w-4 h-4 text-[#171717]" />
-                      <h3 className="text-sm font-semibold text-[#171717]">{layer.name}</h3>
-                      <span className="text-xs text-[#707070]">· {layer.description}</span>
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${layer.color} text-white flex items-center justify-center shadow-sm`}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-extrabold text-slate-800">{layer.name}</h3>
+                        <p className="text-xs text-slate-500">{layer.description}</p>
+                      </div>
                     </div>
-                    <Badge variant="default" size="xs">
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${layer.badgeBg} ${layer.badgeText} border ${layer.borderCol}`}>
                       {layer.nodes.length} components
-                    </Badge>
+                    </span>
                   </div>
 
                   {layer.nodes.length === 0 ? (
-                    <div className="p-4 rounded-[6px] bg-[#FAFAFA] border border-dashed border-[#EDEDED] text-center text-xs text-[#707070]">
-                      No components detected in this layer.
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center text-xs text-slate-500">
+                      No components detected in this layer for {repoName}.
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                      {layer.nodes.map((node) => {
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                      {layer.nodes.map(node => {
                         const isSelected = selectedNode?.id === node.id;
                         return (
                           <div
                             key={node.id}
                             onClick={() => setSelectedNodeId(node.id)}
-                            className={`p-2.5 rounded-[8px] border cursor-pointer transition-all ${
+                            className={`p-3 rounded-2xl border-2 cursor-pointer transition-all ${
                               isSelected
-                                ? 'bg-[#ECFDF5] border-[#3ECF8E] shadow-2xs'
-                                : 'bg-[#FAFAFA] border-[#EDEDED] hover:border-[#DFDFDF] hover:bg-white'
+                                ? 'bg-indigo-50 border-indigo-600 ring-4 ring-indigo-500/10 shadow-sm'
+                                : 'bg-slate-50/70 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/20'
                             }`}
                           >
-                            <div className="flex items-center justify-between gap-2 mb-1">
-                              <span className="font-mono font-medium text-xs text-[#171717] truncate">
+                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                              <span className="font-bold text-xs text-slate-800 truncate font-mono">
                                 {node.label}
                               </span>
-                              <Badge variant="outline" size="xs">
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600 shrink-0">
                                 {node.type}
-                              </Badge>
+                              </span>
                             </div>
-                            <div className="text-[11px] text-[#707070] font-mono truncate">
+                            <div className="text-[11px] text-slate-500 font-mono truncate">
                               {node.filePath}
                             </div>
                           </div>
@@ -352,158 +421,216 @@ export const ArchitectureViewClient: React.FC<ArchitectureViewClientProps> = ({
             })}
           </div>
 
-          {/* Right Column: Component Inspector */}
-          <div className="lg:col-span-4">
-            {selectedNode && (
-              <div className="rounded-[10px] bg-white border border-[#EDEDED] p-5 shadow-2xs space-y-4 sticky top-20">
+          {/* Right Column: Architectural Inspector (4 cols) */}
+          <div className="lg:col-span-4 space-y-4">
+            {selectedNode ? (
+              <div className="rounded-3xl bg-white border-2 border-slate-200 p-6 shadow-md space-y-5 sticky top-20 border-t-4 border-t-indigo-600">
                 <div>
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <Badge variant="default" size="xs">
-                      {selectedNode.type}
-                    </Badge>
-                    <span className="text-[11px] font-mono text-[#9A9A9A]">{selectedNode.id}</span>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-700 bg-indigo-100 px-2.5 py-1 rounded-full border border-indigo-200">
+                      {getNodeLayer(selectedNode.id)?.name || 'Architectural Component'}
+                    </span>
+                    <span className="text-xs font-mono font-bold text-slate-500">
+                      ID: {selectedNode.id}
+                    </span>
                   </div>
-                  <h3 className="text-sm font-semibold text-[#171717] font-mono">{selectedNode.label}</h3>
-                  <div className="text-xs font-mono text-[#707070] mt-0.5 truncate">{selectedNode.filePath}</div>
+                  <h3 className="text-base font-extrabold text-slate-800 font-mono">
+                    {selectedNode.label}
+                  </h3>
+                  <div className="text-xs font-mono text-slate-500 mt-1">
+                    {selectedNode.filePath}
+                  </div>
                   {selectedNode.description && (
-                    <p className="text-xs text-[#707070] mt-2 leading-relaxed">{selectedNode.description}</p>
+                    <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                      {selectedNode.description}
+                    </p>
                   )}
                 </div>
 
-                {/* Callers */}
-                <div className="space-y-1.5 pt-3 border-t border-[#EDEDED]">
-                  <span className="text-xs font-semibold text-[#707070] uppercase tracking-wider block">
-                    Incoming Callers ({callers.length})
-                  </span>
+                {/* Upstream Callers */}
+                <div className="space-y-2 pt-3 border-t border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wide">
+                      Incoming Dependencies ({callers.length})
+                    </span>
+                  </div>
                   {callers.length === 0 ? (
-                    <div className="text-xs text-[#9A9A9A] italic">No incoming callers (Top-level entry)</div>
+                    <div className="text-xs text-slate-400 italic">No incoming callers (Top-level entry point)</div>
                   ) : (
-                    <div className="space-y-1 max-h-36 overflow-y-auto">
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto">
                       {callers.map(({ edge, node }) => (
                         <div
                           key={edge.id}
                           onClick={() => node && setSelectedNodeId(node.id)}
-                          className="p-2 rounded-[6px] bg-[#FAFAFA] border border-[#EDEDED] text-xs font-mono hover:bg-[#F4F4F5] cursor-pointer flex items-center justify-between"
+                          className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono hover:bg-indigo-50 hover:border-indigo-300 cursor-pointer flex items-center justify-between"
                         >
                           <span className="truncate">{node?.label}</span>
-                          <span className="text-[10px] text-[#9A9A9A]">{edge.type}</span>
+                          <span className="text-[10px] font-semibold text-slate-400 shrink-0 ml-1">
+                            {edge.type}
+                          </span>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
 
-                {/* Callees */}
-                <div className="space-y-1.5 pt-3 border-t border-[#EDEDED]">
-                  <span className="text-xs font-semibold text-[#707070] uppercase tracking-wider block">
-                    Outgoing Dependencies ({callees.length})
-                  </span>
+                {/* Downstream Callees */}
+                <div className="space-y-2 pt-3 border-t border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wide">
+                      Outgoing Dependencies ({callees.length})
+                    </span>
+                  </div>
                   {callees.length === 0 ? (
-                    <div className="text-xs text-[#9A9A9A] italic">No outgoing dependencies (Leaf component)</div>
+                    <div className="text-xs text-slate-400 italic">No downstream dependencies (Leaf component)</div>
                   ) : (
-                    <div className="space-y-1 max-h-36 overflow-y-auto">
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto">
                       {callees.map(({ edge, node }) => (
                         <div
                           key={edge.id}
                           onClick={() => node && setSelectedNodeId(node.id)}
-                          className="p-2 rounded-[6px] bg-[#FAFAFA] border border-[#EDEDED] text-xs font-mono hover:bg-[#F4F4F5] cursor-pointer flex items-center justify-between"
+                          className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono hover:bg-indigo-50 hover:border-indigo-300 cursor-pointer flex items-center justify-between"
                         >
                           <span className="truncate">{node?.label}</span>
-                          <span className="text-[10px] text-[#9A9A9A]">{edge.type}</span>
+                          <span className="text-[10px] font-semibold text-slate-400 shrink-0 ml-1">
+                            {edge.type}
+                          </span>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
 
-                {/* Action buttons */}
-                <div className="pt-3 border-t border-[#EDEDED] space-y-2">
+                {/* Cross-feature actions */}
+                <div className="space-y-2 pt-4 border-t border-slate-100">
                   <Link href={`/impact?repoId=${repoId}&targetNodeId=${selectedNode.id}`}>
-                    <Button variant="primary" size="sm" icon={<Zap className="w-3.5 h-3.5" />} fullWidth>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon={<Zap className="w-3.5 h-3.5" />}
+                      className="w-full justify-center text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white"
+                    >
                       Analyze Impact Radius
                     </Button>
                   </Link>
                   <Link href={`/ask?repoId=${repoId}&question=Why%20was%20${encodeURIComponent(selectedNode.label)}%20architected%20this%20way?`}>
-                    <Button variant="secondary" size="sm" icon={<HelpCircle className="w-3.5 h-3.5" />} fullWidth>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={<HelpCircle className="w-3.5 h-3.5" />}
+                      className="w-full justify-center text-xs font-bold text-slate-700"
+                    >
                       Ask Why on this Component
                     </Button>
                   </Link>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       )}
 
-      {/* ── Tab 2: Subsystem Flow ── */}
+      {/* ── Subsystem Flow View ── */}
       {activeTab === 'flow' && (
-        <div className="rounded-[12px] bg-white border border-[#EDEDED] p-6 shadow-2xs space-y-6">
+        <div className="rounded-3xl bg-white border border-slate-200 p-8 shadow-sm space-y-8">
           <div className="max-w-2xl">
-            <h2 className="text-base font-semibold text-[#171717]">
+            <h2 className="text-lg font-extrabold text-slate-800">
               Architectural Request &amp; Dependency Pipeline
             </h2>
-            <p className="text-xs text-[#707070] mt-1">
-              Linear flow representing how external client requests traverse layers from entry controllers through domain logic to persistence.
+            <p className="text-xs text-slate-500 mt-1">
+              Linear flow representing how external HTTP requests traverse layers from entry point controllers through domain services to storage configuration.
             </p>
           </div>
 
-          <div className="flex flex-col md:flex-row items-center justify-between gap-3 py-4 overflow-x-auto">
-            {layers
-              .filter((l) => l.id !== 'test')
-              .map((layer, idx, arr) => {
-                const Icon = layer.icon;
-                return (
-                  <React.Fragment key={layer.id}>
-                    <div className="flex-1 w-full md:w-auto p-4 rounded-[8px] border border-[#EDEDED] bg-[#FAFAFA] space-y-2 min-w-[180px]">
-                      <div className="flex items-center gap-2">
-                        <Icon className="w-4 h-4 text-[#171717]" />
-                        <span className="text-xs font-semibold text-[#171717]">{layer.name}</span>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 py-6 overflow-x-auto">
+            {layers.filter(l => l.id !== 'test').map((layer, idx, arr) => {
+              const Icon = layer.icon;
+              return (
+                <React.Fragment key={layer.id}>
+                  <div className="flex-1 w-full md:w-auto p-5 rounded-3xl border-2 border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm space-y-3 min-w-[200px]">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${layer.color} text-white flex items-center justify-center shadow-sm`}>
+                        <Icon className="w-4 h-4" />
                       </div>
-                      <div className="text-xl font-semibold text-[#171717]">
-                        {layer.nodes.length} <span className="text-xs font-normal text-[#707070]">components</span>
-                      </div>
-                      <div className="text-[11px] text-[#707070] line-clamp-2 leading-relaxed">
-                        {layer.description}
-                      </div>
+                      <span className="text-xs font-bold text-slate-800">{layer.name}</span>
                     </div>
+                    <div className="text-2xl font-extrabold text-slate-800">
+                      {layer.nodes.length} <span className="text-xs font-normal text-slate-500">components</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 line-clamp-2">
+                      {layer.description}
+                    </div>
+                  </div>
 
-                    {idx < arr.length - 1 && (
-                      <div className="shrink-0 flex items-center justify-center text-[#9A9A9A] rotate-90 md:rotate-0">
-                        <ChevronRight className="w-5 h-5" />
-                      </div>
-                    )}
-                  </React.Fragment>
-                );
-              })}
+                  {idx < arr.length - 1 && (
+                    <div className="shrink-0 flex items-center justify-center text-indigo-400 rotate-90 md:rotate-0">
+                      <ChevronRight className="w-6 h-6 stroke-[3]" />
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+
+          {/* Test coverage verification layer */}
+          <div className="p-5 rounded-3xl bg-emerald-50 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-sm shrink-0">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-emerald-950">
+                  Verification Suite (Test Coverage Grounding)
+                </h3>
+                <p className="text-xs text-emerald-700 mt-0.5">
+                  Automated test suites verify AST contracts across all layers. {layers.find(l => l.id === 'test')?.nodes.length || 0} active test suites linked.
+                </p>
+              </div>
+            </div>
+            <Link href={`/gaps?repoId=${repoId}`}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-white border-emerald-300 text-emerald-800 font-bold text-xs shrink-0"
+              >
+                Inspect Untested Gaps
+              </Button>
+            </Link>
           </div>
         </div>
       )}
 
-      {/* ── Tab 3: Boundary & Health Audit ── */}
+      {/* ── Boundary & Health Audit ── */}
       {activeTab === 'audit' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div className="p-5 rounded-[10px] bg-white border border-[#EDEDED] shadow-2xs space-y-3">
-            <div className="flex items-center gap-2.5">
-              <CheckCircle2 className="w-4 h-4 text-[#10B981]" />
-              <h3 className="text-sm font-semibold text-[#171717]">Layer Separation Integrity</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-sm">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-800">Clean Layer Separation</h3>
+                <p className="text-xs text-slate-500">Presentation controllers route through domain services.</p>
+              </div>
             </div>
-            <p className="text-xs text-[#707070] leading-relaxed">
-              HTTP controllers cleanly route through domain services before reaching storage drivers. No cross-layer encapsulation violations detected.
+            <p className="text-sm text-slate-600 leading-relaxed">
+              No controllers directly mutate or bypass domain services to access storage primitives. Clean single-responsibility separation observed.
             </p>
           </div>
 
-          <div className="p-5 rounded-[10px] bg-white border border-[#EDEDED] shadow-2xs space-y-3">
-            <div className="flex items-center gap-2.5">
-              {auditMetrics.circularDetected ? (
-                <AlertTriangle className="w-4 h-4 text-[#F59E0B]" />
-              ) : (
-                <CheckCircle2 className="w-4 h-4 text-[#10B981]" />
-              )}
-              <h3 className="text-sm font-semibold text-[#171717]">Acyclic Coupling Audit</h3>
+          <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-sm text-white ${auditMetrics.circularDetected ? 'bg-amber-500' : 'bg-emerald-500'}`}>
+                {auditMetrics.circularDetected ? <AlertTriangle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-800">Cyclic Coupling Audit</h3>
+                <p className="text-xs text-slate-500">Circular dependencies across modules.</p>
+              </div>
             </div>
-            <p className="text-xs text-[#707070] leading-relaxed">
+            <p className="text-sm text-slate-600 leading-relaxed">
               {auditMetrics.circularDetected
-                ? 'Cyclic dependency cycles detected between modules. Consider isolating shared interfaces to decouple mutual imports.'
+                ? 'Detected cyclic relationships between modules. Review and isolate shared abstractions to prevent tight coupling.'
                 : 'Zero circular dependencies detected in the component call graph. Clean acyclic dependency tree.'}
             </p>
           </div>

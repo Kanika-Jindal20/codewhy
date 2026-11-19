@@ -34,16 +34,48 @@ export const AffectedComponentList: React.FC<AffectedComponentListProps> = ({
     return c.impactKind === filterKind;
   });
 
-  const getSeverityBadge = (severity: ImpactSeverity) => {
+  const getSeverityBadge = (severity: ImpactSeverity, reason: string) => {
     switch (severity) {
       case 'high':
-        return <Badge variant="error" size="sm">High Impact</Badge>;
+        return (
+          <span 
+            title={reason}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-red-100 text-red-700 border border-red-300 shadow-xs"
+          >
+            <AlertCircle className="w-3.5 h-3.5 text-red-600" />
+            High Impact
+          </span>
+        );
       case 'medium':
-        return <Badge variant="warning" size="sm">Medium Impact</Badge>;
+        return (
+          <span 
+            title={reason}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800 border border-amber-300 shadow-xs"
+          >
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+            Medium Impact
+          </span>
+        );
       case 'low':
-        return <Badge variant="info" size="sm">Low Impact</Badge>;
+        return (
+          <span 
+            title={reason}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-blue-100 text-blue-700 border border-blue-300 shadow-xs"
+          >
+            <Info className="w-3.5 h-3.5 text-blue-600" />
+            Low Impact
+          </span>
+        );
       default:
-        return <Badge variant="outline" size="sm">Info</Badge>;
+        return (
+          <span 
+            title={reason}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-700 border border-gray-200"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            Info
+          </span>
+        );
     }
   };
 
@@ -51,56 +83,59 @@ export const AffectedComponentList: React.FC<AffectedComponentListProps> = ({
     switch (kind) {
       case 'direct_dependent':
         return (
-          <span className="p-1.5 rounded-md bg-rose-50 text-rose-600 flex items-center justify-center">
-            <ArrowRightLeft className="w-3.5 h-3.5" />
+          <span className="p-2 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
+            <ArrowRightLeft className="w-4 h-4" />
           </span>
         );
       case 'transitive_consumer':
         return (
-          <span className="p-1.5 rounded-md bg-purple-50 text-purple-600 flex items-center justify-center">
-            <GitFork className="w-3.5 h-3.5" />
+          <span className="p-2 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
+            <GitFork className="w-4 h-4" />
           </span>
         );
       case 'test_suite':
         return (
-          <span className="p-1.5 rounded-md bg-amber-50 text-amber-600 flex items-center justify-center">
-            <TestTube className="w-3.5 h-3.5" />
+          <span className="p-2 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
+            <TestTube className="w-4 h-4" />
           </span>
         );
       case 'config_consumer':
         return (
-          <span className="p-1.5 rounded-md bg-sky-50 text-sky-600 flex items-center justify-center">
-            <Settings className="w-3.5 h-3.5" />
+          <span className="p-2 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
+            <Settings className="w-4 h-4" />
           </span>
         );
       default:
         return (
-          <span className="p-1.5 rounded-md bg-surface-muted text-ink-muted flex items-center justify-center">
-            <Info className="w-3.5 h-3.5" />
+          <span className="p-2 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
+            <Info className="w-4 h-4" />
           </span>
         );
     }
   };
 
   return (
-    <div className="bg-white border border-border-default rounded-xl p-5 sm:p-6 shadow-xs">
+    <div className="bg-white border border-red-100 rounded-2xl p-5 sm:p-6 shadow-lg">
       {/* Header and Filter Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-3 border-b border-border-subtle">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 pb-4 border-b border-gray-100">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-ink-primary">
-              Potentially Affected Components
-            </h3>
-            <span className="px-2 py-0.5 rounded text-[11px] font-mono bg-surface-secondary text-ink-muted border border-border-subtle">
-              {filtered.length} total
+            <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-red-100 text-red-600 font-bold">
+              <Layers className="w-4 h-4" />
             </span>
+            <h3 className="text-base font-extrabold text-gray-900">
+              Potentially Affected Components
+              <span className="ml-2 px-2.5 py-0.5 rounded-full text-xs bg-red-50 text-red-700 border border-red-200">
+                {filtered.length} total
+              </span>
+            </h3>
           </div>
-          <p className="text-xs text-ink-muted mt-0.5">
-            Click any component to inspect its propagation path, evidence citations, and recommended checks.
+          <p className="text-xs text-gray-500 mt-1">
+            Click any component to inspect its propagation path, evidence citations, and recommended verification steps.
           </p>
         </div>
 
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 text-xs">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
           {[
             { id: 'all', label: 'All' },
             { id: 'direct_dependent', label: 'Direct' },
@@ -111,10 +146,10 @@ export const AffectedComponentList: React.FC<AffectedComponentListProps> = ({
             <button
               key={tab.id}
               onClick={() => setFilterKind(tab.id)}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 filterKind === tab.id
-                  ? 'bg-ink-primary text-white border border-ink-primary'
-                  : 'bg-surface-secondary text-ink-muted hover:text-ink-primary border border-border-subtle hover:bg-surface-muted'
+                  ? 'bg-red-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
               {tab.label}
@@ -124,24 +159,30 @@ export const AffectedComponentList: React.FC<AffectedComponentListProps> = ({
       </div>
 
       {/* List */}
-      <div className="space-y-2 max-h-[460px] overflow-y-auto pr-1">
+      <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1">
         {filtered.length === 0 ? (
-          <div className="py-12 text-center text-xs text-ink-faint bg-surface-secondary rounded-lg border border-dashed border-border-default">
+          <div className="py-12 text-center text-sm text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
             No affected components found in this category.
           </div>
         ) : (
           filtered.map((item) => {
             const isSelected = item.node.id === selectedComponentId;
             const primaryPath = item.paths[0];
+            const severityBorder =
+              item.severity === 'high'
+                ? 'border-l-red-500'
+                : item.severity === 'medium'
+                ? 'border-l-amber-500'
+                : 'border-l-blue-500';
 
             return (
               <div
                 key={item.node.id}
                 onClick={() => onSelectComponent(item)}
-                className={`p-3.5 rounded-lg border transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                className={`p-4 rounded-2xl border border-l-4 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs hover:shadow-md ${severityBorder} ${
                   isSelected
-                    ? 'bg-brand-emerald/5 border-brand-emerald ring-1 ring-brand-emerald/30 shadow-xs'
-                    : 'bg-white border-border-subtle hover:border-border-default hover:bg-surface-secondary'
+                    ? 'bg-red-50/60 border-red-300 ring-2 ring-red-400/20'
+                    : 'bg-white border-gray-200 hover:border-red-200 hover:bg-red-50/20'
                 }`}
               >
                 <div className="flex items-start gap-3 min-w-0">
@@ -150,30 +191,30 @@ export const AffectedComponentList: React.FC<AffectedComponentListProps> = ({
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-medium text-ink-primary font-mono truncate">
+                      <span className="text-sm font-extrabold text-gray-900 font-mono truncate">
                         {item.node.label}
                       </span>
                       <Badge variant="outline" size="sm">
                         {item.node.type}
                       </Badge>
                       {primaryPath && primaryPath.hops > 1 && (
-                        <span className="text-[10px] font-mono text-ink-faint bg-surface-muted px-1.5 py-0.5 rounded border border-border-subtle">
-                          {primaryPath.hops} hops
+                        <span className="text-[11px] font-mono text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200 font-bold">
+                          {primaryPath.hops} hops away
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] text-ink-muted font-mono truncate mt-0.5">
+                    <div className="text-xs text-gray-500 font-mono truncate mt-0.5">
                       {item.node.filePath}
                     </div>
-                    <div className="text-xs text-ink-secondary mt-1">
+                    <div className="text-xs text-gray-700 mt-1 font-medium">
                       {item.severityReason}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border-subtle">
-                  {getSeverityBadge(item.severity)}
-                  <div className="inline-flex items-center gap-1 text-xs text-brand-deep font-medium hover:underline">
+                <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100">
+                  {getSeverityBadge(item.severity, item.severityReason)}
+                  <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-red-50 text-red-700 text-xs font-bold hover:bg-red-100 transition-colors">
                     <span>Inspect</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </div>

@@ -1,10 +1,11 @@
 import React from 'react';
 
-export const Skeleton: React.FC<{ className?: string }> = ({ className = '' }) => {
+interface SkeletonProps {
+  className?: string;
+}
+
+export const Skeleton: React.FC<SkeletonProps> = ({ className = '' }) => {
   return (
-    <div
-      className={`animate-pulse rounded-[8px] bg-[#EDEDED] ${className}`}
-      aria-hidden="true"
-    />
+    <div className={`animate-pulse bg-slate-200/70 rounded-md ${className}`} />
   );
 };
