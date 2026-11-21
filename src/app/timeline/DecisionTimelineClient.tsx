@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CalendarClock, GitCommitHorizontal, History, LoaderCircle, Search, FolderGit2 } from 'lucide-react';
+import { AlertTriangle, CalendarClock, GitCommitHorizontal, History, LoaderCircle, Search } from 'lucide-react';
 import { SAMPLE_REPO_ECOMMERCE } from '@/lib/graph/sample-repo';
 import { useActiveRepo } from '@/lib/repositories/active-repo-client';
 import type { DecisionTimelineEvent, DecisionTimelineStatus } from '@/types/timeline';
@@ -33,13 +33,34 @@ const SOURCE_OPTIONS: Array<{ value: EvidenceSource['type'] | 'all'; label: stri
   { value: 'co_change_history', label: 'Co-change history' },
 ];
 
-interface TimelinePayload { 
-  repoId: string; 
-  repoName: string; 
-  isDemoData: boolean; 
-  events: DecisionTimelineEvent[]; 
-  components?: Array<{ id: string; label: string }>; 
-}
+const STATUS_VARIANTS: Record<DecisionTimelineStatus, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
+  historical_event: 'info', possible_decision: 'warning', supported_decision: 'success',
+  possible_supersession: 'warning', confirmed_supersession: 'success', conflicting_evidence: 'error', unresolved: 'default',
+};
+
+/** Maps each status to vivid pill colors */
+const STATUS_PILL: Record<DecisionTimelineStatus, { bg: string; text: string; border: string; dot: string }> = {
+  supported_decision:    { bg: 'bg-emerald-100',  text: 'text-emerald-700',  border: 'border-emerald-300',  dot: 'bg-emerald-500' },
+  possible_decision:     { bg: 'bg-amber-100',    text: 'text-amber-700',    border: 'border-amber-300',    dot: 'bg-amber-500' },
+  possible_supersession: { bg: 'bg-amber-100',    text: 'text-amber-700',    border: 'border-amber-300',    dot: 'bg-amber-500' },
+  confirmed_supersession:{ bg: 'bg-amber-100',    text: 'text-amber-700',    border: 'border-amber-300',    dot: 'bg-amber-500' },
+  conflicting_evidence:  { bg: 'bg-red-100',      text: 'text-red-700',      border: 'border-red-300',      dot: 'bg-red-500' },
+  historical_event:      { bg: 'bg-teal-100',     text: 'text-teal-700',     border: 'border-teal-300',     dot: 'bg-teal-500' },
+  unresolved:            { bg: 'bg-gray-100',     text: 'text-gray-600',     border: 'border-gray-300',     dot: 'bg-gray-400' },
+};
+
+/** Maps each status to the left-border accent color on list cards */
+const STATUS_BORDER: Record<DecisionTimelineStatus, string> = {
+  supported_decision:    'border-l-emerald-500',
+  possible_decision:     'border-l-amber-400',
+  possible_supersession: 'border-l-amber-400',
+  confirmed_supersession:'border-l-amber-500',
+  conflicting_evidence:  'border-l-red-500',
+  historical_event:      'border-l-teal-500',
+  unresolved:            'border-l-gray-400',
+};
+
+interface TimelinePayload { repoId: string; repoName: string; isDemoData: boolean; events: DecisionTimelineEvent[]; components?: Array<{ id: string; label: string }>; }
 
 export function DecisionTimelineClient() {
   const [payload, setPayload] = useState<TimelinePayload | null>(null);
@@ -83,7 +104,6 @@ export function DecisionTimelineClient() {
     if (!query) return payload?.events ?? [];
     return (payload?.events ?? []).filter((event) => [event.title, event.summary, ...event.componentLabels, ...event.evidence.map((item) => `${item.filePath ?? ''} ${item.commitMessage ?? ''} ${item.title}`)].join(' ').toLowerCase().includes(query));
   }, [payload, search]);
-
   const selected = visibleEvents.find((event) => event.id === selectedId) ?? visibleEvents[0];
   const related = selected?.relatedEventId ? payload?.events.find((event) => event.id === selected.relatedEventId) : undefined;
   const repo = {
@@ -94,75 +114,63 @@ export function DecisionTimelineClient() {
     ? payload.components
     : [];
 
-  const getStatusBadgeVariant = (st: DecisionTimelineStatus): 'default' | 'success' | 'warning' | 'error' | 'info' => {
-    switch (st) {
-      case 'supported_decision':
-      case 'confirmed_supersession':
-        return 'success';
-      case 'possible_decision':
-      case 'possible_supersession':
-        return 'warning';
-      case 'conflicting_evidence':
-        return 'error';
-      case 'historical_event':
-        return 'info';
-      default:
-        return 'default';
-    }
-  };
-
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-16">
-      {/* Page Header */}
-      <div className="bg-white border border-border-default rounded-xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-brand-emerald/10 text-brand-deep border border-brand-emerald/20">
-              <History className="w-3 h-3 text-brand-emerald" />
-              Decision Memory
-            </span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-surface-muted text-ink-muted border border-border-subtle font-mono">
-              Chronological Audit
-            </span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-semibold text-ink-primary tracking-tight">
-            Decision Timeline
-          </h1>
-          <p className="text-xs sm:text-sm text-ink-muted mt-1 max-w-2xl">
-            Trace repository design decisions, architectural pivots, and component evolution backed by AST declarations and commit records.
-          </p>
-        </div>
+    <div className="font-['Inter',sans-serif] max-w-7xl mx-auto space-y-6 pb-12">
 
-        <div className="flex items-center gap-2.5 self-start md:self-auto">
-          <div className="flex items-center gap-2 rounded-lg border border-border-default bg-surface-secondary px-3 py-1.5 text-xs text-ink-secondary">
-            <FolderGit2 className="w-3.5 h-3.5 text-ink-muted" />
-            <span className="font-mono font-medium">{repo.repoName}</span>
+      {/* ── HEADER BANNER ── */}
+      <header className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-teal-600 to-cyan-600 px-7 py-6 shadow-lg">
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_top_right,_white_0%,_transparent_70%)]" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <span className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm shadow-md border border-white/30">
+              <History className="w-7 h-7 text-white stroke-[2]" />
+            </span>
+            <div>
+              <h1 className="text-2xl font-extrabold tracking-tight text-white">Decision Timeline</h1>
+              <p className="text-sm text-teal-100 mt-0.5">
+                Trace repository design decisions, architectural pivots, and component evolution backed by AST and commit records.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/25 px-4 py-2.5 shadow-sm self-start sm:self-auto">
+            <GitCommitHorizontal className="w-4 h-4 text-teal-100" />
+            <span className="font-bold text-white text-sm">{repo.repoName}</span>
             {repo.isDemo && (
-              <Badge variant="warning" size="sm">Demo</Badge>
+              <span className="ml-1 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-amber-900 border border-amber-300">
+                Demo
+              </span>
             )}
           </div>
         </div>
-      </div>
+      </header>
 
       {repo.isDemo && (
         <Alert type="warning" title="Sample repository history">
-          Timeline entries use illustrative sample records. No live GitHub repository has been connected.
+          Timeline entries use illustrative sample records. No live GitHub repository or engineering discussion has been connected.
         </Alert>
       )}
       {error && <Alert type="error" title="Timeline unavailable">{error}</Alert>}
 
-      {/* Filter Toolbar */}
-      <section className="bg-white border border-border-default rounded-xl p-4 shadow-xs space-y-3">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
+      {/* ── FILTER TOOLBAR ── */}
+      <section
+        className="rounded-2xl border border-teal-100 bg-white p-5 shadow-lg"
+        aria-label="Timeline filters"
+      >
+        <div className="flex items-center gap-2 mb-4 border-l-4 border-teal-500 pl-3">
+          <Search className="w-4 h-4 text-teal-600" />
+          <span className="text-sm font-bold text-teal-700">Filter Timeline</span>
+          <span className="text-xs text-teal-500">— narrow results by component, status, date or keyword</span>
+        </div>
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-6">
           {/* Component Focus */}
           <div>
-            <label className="text-[10px] font-mono uppercase tracking-wider text-ink-faint block mb-1">
+            <label className="text-[11px] font-bold text-teal-700 uppercase tracking-wider block mb-1.5">
               Component Focus
             </label>
             <select
               value={componentId}
               onChange={(event) => setComponentId(event.target.value)}
-              className="w-full rounded-md border border-border-default bg-surface-secondary px-2.5 py-1.5 text-xs text-ink-primary focus:outline-none focus:border-brand-emerald"
+              className="w-full rounded-xl border border-teal-200 bg-teal-50/40 px-3 py-2 text-xs text-gray-800 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-400/20 transition-all shadow-sm font-medium"
             >
               <option value="">All components</option>
               {components.map((component) => (
@@ -173,13 +181,13 @@ export function DecisionTimelineClient() {
 
           {/* Evolution Status */}
           <div>
-            <label className="text-[10px] font-mono uppercase tracking-wider text-ink-faint block mb-1">
-              Status
+            <label className="text-[11px] font-bold text-teal-700 uppercase tracking-wider block mb-1.5">
+              Evolution Status
             </label>
             <select
               value={status}
               onChange={(event) => setStatus(event.target.value as DecisionTimelineStatus | 'all')}
-              className="w-full rounded-md border border-border-default bg-surface-secondary px-2.5 py-1.5 text-xs text-ink-primary focus:outline-none focus:border-brand-emerald"
+              className="w-full rounded-xl border border-teal-200 bg-teal-50/40 px-3 py-2 text-xs text-gray-800 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-400/20 transition-all shadow-sm font-medium"
             >
               {STATUS_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -189,13 +197,13 @@ export function DecisionTimelineClient() {
 
           {/* Source Evidence Type */}
           <div>
-            <label className="text-[10px] font-mono uppercase tracking-wider text-ink-faint block mb-1">
-              Source Type
+            <label className="text-[11px] font-bold text-teal-700 uppercase tracking-wider block mb-1.5">
+              Source Evidence Type
             </label>
             <select
               value={sourceType}
               onChange={(event) => setSourceType(event.target.value as EvidenceSource['type'] | 'all')}
-              className="w-full rounded-md border border-border-default bg-surface-secondary px-2.5 py-1.5 text-xs text-ink-primary focus:outline-none focus:border-brand-emerald"
+              className="w-full rounded-xl border border-teal-200 bg-teal-50/40 px-3 py-2 text-xs text-gray-800 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-400/20 transition-all shadow-sm font-medium"
             >
               {SOURCE_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -205,105 +213,133 @@ export function DecisionTimelineClient() {
 
           {/* From Date */}
           <div>
-            <label className="text-[10px] font-mono uppercase tracking-wider text-ink-faint block mb-1">
+            <label className="text-[11px] font-bold text-teal-700 uppercase tracking-wider block mb-1.5">
               From Date
             </label>
             <input
               type="date"
               value={from}
               onChange={(event) => setFrom(event.target.value)}
-              className="w-full rounded-md border border-border-default bg-surface-secondary px-2.5 py-1.5 text-xs text-ink-primary focus:outline-none focus:border-brand-emerald font-mono"
+              className="w-full rounded-xl border border-teal-200 bg-teal-50/40 px-3 py-2 text-xs text-gray-800 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-400/20 transition-all shadow-sm font-medium"
             />
           </div>
 
           {/* To Date */}
           <div>
-            <label className="text-[10px] font-mono uppercase tracking-wider text-ink-faint block mb-1">
+            <label className="text-[11px] font-bold text-teal-700 uppercase tracking-wider block mb-1.5">
               To Date
             </label>
             <input
               type="date"
               value={to}
               onChange={(event) => setTo(event.target.value)}
-              className="w-full rounded-md border border-border-default bg-surface-secondary px-2.5 py-1.5 text-xs text-ink-primary focus:outline-none focus:border-brand-emerald font-mono"
+              className="w-full rounded-xl border border-teal-200 bg-teal-50/40 px-3 py-2 text-xs text-gray-800 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-400/20 transition-all shadow-sm font-medium"
             />
           </div>
 
           {/* Search */}
           <div>
-            <label className="text-[10px] font-mono uppercase tracking-wider text-ink-faint block mb-1">
+            <label className="text-[11px] font-bold text-teal-700 uppercase tracking-wider block mb-1.5">
               Search Keywords
             </label>
             <div className="relative">
-              <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-ink-faint pointer-events-none" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-teal-400 pointer-events-none" />
               <input
                 type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="File, commit..."
-                className="w-full rounded-md border border-border-default bg-surface-secondary pl-8 pr-2.5 py-1.5 text-xs text-ink-primary placeholder:text-ink-faint focus:outline-none focus:border-brand-emerald"
+                placeholder="File, commit, event…"
+                className="w-full rounded-xl border border-teal-200 bg-teal-50/40 pl-8 pr-3 py-2 text-xs text-gray-800 placeholder:text-teal-300 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-400/20 transition-all shadow-sm font-medium"
               />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Main Content Grid */}
+      {/* ── MAIN CONTENT GRID ── */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
-        {/* Left Column: Event List */}
-        <section className="xl:col-span-2 space-y-2.5">
-          <div className="flex items-center justify-between pb-1">
-            <h2 className="text-xs font-semibold text-ink-primary uppercase tracking-wider">
-              Chronological History
-            </h2>
-            <span className="text-[11px] font-mono text-ink-faint">
-              {visibleEvents.length} events
+
+        {/* ── LEFT COLUMN: Event List ── */}
+        <section className="xl:col-span-2 space-y-3" aria-label="Chronological repository events">
+          {/* List header */}
+          <div className="flex items-center justify-between px-1 pb-1">
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-teal-500 text-white">
+                <CalendarClock className="w-3.5 h-3.5" />
+              </span>
+              <h2 className="text-sm font-extrabold text-gray-800 uppercase tracking-wider">
+                Chronological History
+              </h2>
+            </div>
+            <span className="rounded-full bg-teal-100 text-teal-700 border border-teal-200 px-2.5 py-0.5 text-xs font-bold">
+              {visibleEvents.length} {visibleEvents.length === 1 ? 'event' : 'events'}
             </span>
           </div>
 
+          {/* Loading */}
           {loading ? (
-            <div className="rounded-xl border border-border-default bg-white p-6 text-center text-xs text-ink-muted animate-pulse">
-              <LoaderCircle className="h-4 w-4 animate-spin text-brand-deep mx-auto mb-2" />
-              Loading timeline events...
+            <div role="status" className="flex items-center gap-3 rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50 to-cyan-50 p-5 shadow-sm">
+              <LoaderCircle className="h-5 w-5 animate-spin text-teal-500" />
+              <div>
+                <p className="text-sm font-bold text-teal-700">Loading timeline…</p>
+                <p className="text-xs text-teal-500">Fetching repository history records</p>
+              </div>
             </div>
+
+          /* Empty state */
           ) : visibleEvents.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border-default bg-white p-8 text-center text-xs text-ink-faint">
-              No timeline records matching current filters.
+            <div className="rounded-2xl border-2 border-dashed border-teal-200 bg-gradient-to-br from-teal-50 to-cyan-50/50 p-10 text-center">
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-100 border border-teal-200 shadow-sm">
+                <CalendarClock className="h-7 w-7 text-teal-500" />
+              </div>
+              <p className="text-sm font-bold text-teal-700">No timeline records found</p>
+              <p className="mt-1 text-xs text-teal-500">Try clearing the search query or adjusting the date range.</p>
             </div>
+
+          /* Event cards */
           ) : (
-            <ol className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
+            <ol className="space-y-2.5">
               {visibleEvents.map((event) => {
                 const isSelected = selected?.id === event.id;
+                const pill = STATUS_PILL[event.status];
+                const leftBorder = STATUS_BORDER[event.status];
                 return (
                   <li key={event.id}>
                     <button
                       type="button"
                       onClick={() => setSelectedId(event.id)}
-                      className={`w-full rounded-lg border p-3 text-left transition-all ${
+                      aria-pressed={isSelected}
+                      className={`w-full rounded-2xl border-l-4 border border-gray-100 p-4 text-left transition-all shadow-sm ${leftBorder} ${
                         isSelected
-                          ? 'bg-brand-emerald/5 border-brand-emerald ring-1 ring-brand-emerald/30 shadow-xs'
-                          : 'bg-white border-border-subtle hover:border-border-default hover:bg-surface-secondary'
+                          ? 'bg-gradient-to-br from-teal-50 to-cyan-50 border-teal-300 ring-2 ring-teal-400/25 shadow-md'
+                          : 'bg-white hover:border-teal-200 hover:bg-teal-50/30'
                       }`}
                     >
-                      <div className="mb-1.5 flex flex-wrap items-center justify-between gap-1.5">
-                        <span className="text-[10px] font-mono text-ink-muted">
-                          {event.date ? new Date(event.date).toLocaleDateString() : 'No date'}
+                      {/* Date chip + Status pill */}
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <span className="rounded-full bg-teal-500 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                          {event.date
+                            ? new Date(event.date).toLocaleDateString(undefined, { dateStyle: 'medium' })
+                            : 'Date unavailable'}
                         </span>
-                        <Badge variant={getStatusBadgeVariant(event.status)} size="sm">
+                        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${pill.bg} ${pill.text} ${pill.border}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${pill.dot}`} />
                           {event.status.replaceAll('_', ' ')}
-                        </Badge>
+                        </span>
                       </div>
 
-                      <p className="text-xs font-medium text-ink-primary line-clamp-1">
+                      {/* Title */}
+                      <p className={`text-xs font-bold line-clamp-1 ${isSelected ? 'text-teal-700' : 'text-gray-800'}`}>
                         {event.title}
                       </p>
 
+                      {/* Component labels */}
                       {event.componentLabels.length > 0 && (
-                        <div className="mt-1 flex flex-wrap gap-1">
+                        <div className="mt-1.5 flex flex-wrap gap-1">
                           {event.componentLabels.map((label, i) => (
                             <span
                               key={i}
-                              className="rounded bg-surface-muted px-1.5 py-0.5 font-mono text-[10px] text-ink-muted"
+                              className="rounded-md bg-gray-100 border border-gray-200 px-1.5 py-0.5 font-mono text-[10px] text-gray-500"
                             >
                               {label}
                             </span>
@@ -318,85 +354,154 @@ export function DecisionTimelineClient() {
           )}
         </section>
 
-        {/* Right Column: Event Detail */}
-        <section className="space-y-4 xl:col-span-3">
+        {/* ── RIGHT COLUMN: Event Detail ── */}
+        <section className="space-y-4 xl:col-span-3" aria-label="Selected timeline event details">
           {selected ? (
-            <div className="bg-white rounded-xl border border-border-default p-5 sm:p-6 shadow-xs space-y-5">
-              <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-border-subtle">
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-base font-semibold text-ink-primary leading-snug">{selected.title}</h2>
-                  {selected.componentLabels.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {selected.componentLabels.map((label, i) => (
-                        <span
-                          key={i}
-                          className="rounded bg-surface-secondary border border-border-subtle px-2 py-0.5 font-mono text-[11px] text-ink-secondary"
-                        >
-                          {label}
-                        </span>
-                      ))}
+            <>
+              {/* Main detail card */}
+              <div className="rounded-2xl border border-teal-100 bg-white shadow-lg overflow-hidden">
+                {/* Card top accent bar */}
+                <div className="h-1.5 w-full bg-gradient-to-r from-teal-500 to-cyan-500" />
+
+                <div className="p-6 sm:p-7">
+                  {/* Title row */}
+                  <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-100 pb-5">
+                    <div className="flex-1 min-w-0">
+                      <h2 className="text-xl font-extrabold text-gray-900 leading-tight">{selected.title}</h2>
+                      {selected.componentLabels.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {selected.componentLabels.map((label, i) => (
+                            <span
+                              key={i}
+                              className="rounded-md bg-teal-50 border border-teal-200 px-2 py-0.5 font-mono text-[11px] text-teal-700 font-medium"
+                            >
+                              {label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {selected.componentLabels.length === 0 && (
+                        <p className="mt-1 text-xs text-gray-400 font-mono">No explicit component link was recorded.</p>
+                      )}
                     </div>
-                  )}
-                </div>
-                <Badge variant={getStatusBadgeVariant(selected.status)} size="sm">
-                  {selected.status.replaceAll('_', ' ')}
-                </Badge>
-              </div>
-
-              {/* Summary Block */}
-              <div>
-                <span className="text-[10px] font-mono uppercase tracking-wider text-ink-faint block mb-1">
-                  Decision Summary
-                </span>
-                <div className="rounded-lg bg-surface-secondary border border-border-subtle p-3.5">
-                  <p className="text-xs leading-relaxed text-ink-secondary">{selected.summary}</p>
-                </div>
-              </div>
-
-              {/* Evidence Section */}
-              <div className="pt-2 border-t border-border-subtle">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xs font-semibold text-ink-primary">
-                    Source Evidence Records ({selected.evidence.length})
-                  </h3>
-                </div>
-
-                {selected.evidence.length > 0 ? (
-                  <div className="space-y-2">
-                    {selected.evidence.map((item, index) => (
-                      <EvidenceCard
-                        key={`${item.id}-${index}`}
-                        evidence={{ ...item, isSimulatedDemoData: item.isSimulatedDemoData ?? repo.isDemo }}
-                        compact={selected.evidence.length > 3}
-                      />
-                    ))}
+                    {/* Large status badge */}
+                    <span className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide shadow-sm flex-shrink-0
+                      ${STATUS_PILL[selected.status].bg} ${STATUS_PILL[selected.status].text} ${STATUS_PILL[selected.status].border}`}>
+                      <span className={`h-2 w-2 rounded-full ${STATUS_PILL[selected.status].dot}`} />
+                      {selected.status.replaceAll('_', ' ')}
+                    </span>
                   </div>
-                ) : (
-                  <div className="rounded-lg border border-dashed border-border-default p-4 text-center text-xs text-ink-faint">
-                    No source evidence attached to this event.
+
+                  {/* Summary block */}
+                  <div className="mt-5">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-teal-600 mb-2">
+                      Decision Summary
+                    </p>
+                    <div className="rounded-xl bg-gradient-to-br from-teal-50 to-cyan-50/60 border border-teal-100 p-4">
+                      <p className="text-sm leading-relaxed text-gray-700">{selected.summary}</p>
+                    </div>
                   </div>
-                )}
+
+                  {/* Evidence section */}
+                  <div className="mt-6 border-t border-gray-100 pt-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-teal-500 text-white shadow-sm">
+                          <Search className="w-3.5 h-3.5" />
+                        </span>
+                        <h3 className="text-sm font-extrabold text-gray-800">Source Evidence Records</h3>
+                      </div>
+                      <span className="rounded-full bg-teal-100 text-teal-700 border border-teal-200 px-2.5 py-0.5 text-xs font-bold">
+                        {selected.evidence.length} {selected.evidence.length === 1 ? 'item' : 'items'}
+                      </span>
+                    </div>
+
+                    {selected.evidence.length > 0 ? (
+                      <div className="space-y-2.5">
+                        {selected.evidence.map((item, index) => (
+                          <EvidenceCard
+                            key={`${item.id}-${index}`}
+                            evidence={{ ...item, isSimulatedDemoData: item.isSimulatedDemoData ?? repo.isDemo }}
+                            compact={selected.evidence.length > 3}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border-2 border-dashed border-teal-200 bg-teal-50/40 p-6 text-center">
+                        <p className="text-sm font-bold text-teal-600">No evidence attached</p>
+                        <p className="mt-1 text-xs text-teal-400">No source evidence is attached to this event.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              {/* Related Events Comparison */}
+              {/* Related events comparison */}
               {related && (
-                <div className="grid grid-cols-1 gap-3 pt-3 border-t border-border-subtle sm:grid-cols-2">
-                  <div className="rounded-lg border border-border-default bg-surface-secondary p-3 space-y-1">
-                    <span className="text-[10px] font-mono text-ink-faint uppercase block">Later Record</span>
-                    <p className="text-xs font-medium text-ink-primary">{selected.title}</p>
-                    <span className="text-[10px] font-mono text-ink-muted block">{selected.date}</span>
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  {/* Later record */}
+                  <div className="rounded-2xl border-l-4 border-l-teal-500 border border-teal-100 bg-gradient-to-br from-teal-50 to-cyan-50/60 p-5 shadow-sm">
+                    <div className="flex items-center gap-1.5 mb-3">
+                      <span className="h-2 w-2 rounded-full bg-teal-500" />
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-teal-600">Later record</p>
+                    </div>
+                    <p className="text-sm font-bold text-gray-800">{selected.title}</p>
+                    <p className="mt-1 text-xs font-mono text-teal-600 bg-teal-100 border border-teal-200 rounded-full px-2 py-0.5 inline-block">
+                      {selected.date ? new Date(selected.date).toLocaleDateString() : 'Date unavailable'}
+                    </p>
+                    {selected.evidence.length > 0 ? (
+                      <div className="mt-3 space-y-2">
+                        {selected.evidence.map((item, index) => (
+                          <EvidenceCard
+                            key={`${item.id}-${index}`}
+                            evidence={{ ...item, isSimulatedDemoData: item.isSimulatedDemoData ?? repo.isDemo }}
+                            compact
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-xs text-teal-500 italic">No evidence attached.</p>
+                    )}
                   </div>
-                  <div className="rounded-lg border border-border-default bg-surface-secondary p-3 space-y-1">
-                    <span className="text-[10px] font-mono text-ink-faint uppercase block">Earlier Linked Record</span>
-                    <p className="text-xs font-medium text-ink-primary">{related.title}</p>
-                    <span className="text-[10px] font-mono text-ink-muted block">{related.date}</span>
+
+                  {/* Earlier linked record */}
+                  <div className="rounded-2xl border-l-4 border-l-cyan-500 border border-cyan-100 bg-gradient-to-br from-cyan-50 to-teal-50/60 p-5 shadow-sm">
+                    <div className="flex items-center gap-1.5 mb-3">
+                      <span className="h-2 w-2 rounded-full bg-cyan-500" />
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-cyan-600">Earlier linked record</p>
+                    </div>
+                    <p className="text-sm font-bold text-gray-800">{related.title}</p>
+                    <p className="mt-1 text-xs font-mono text-cyan-600 bg-cyan-100 border border-cyan-200 rounded-full px-2 py-0.5 inline-block">
+                      {related.date ? new Date(related.date).toLocaleDateString() : 'Date unavailable'}
+                    </p>
+                    {related.evidence.length > 0 ? (
+                      <div className="mt-3 space-y-2">
+                        {related.evidence.map((item, index) => (
+                          <EvidenceCard
+                            key={`${item.id}-${index}`}
+                            evidence={{ ...item, isSimulatedDemoData: item.isSimulatedDemoData ?? repo.isDemo }}
+                            compact
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-xs text-cyan-500 italic">No evidence attached.</p>
+                    )}
                   </div>
                 </div>
               )}
-            </div>
+            </>
+
+          /* No event selected */
           ) : (
-            <div className="bg-white rounded-xl border border-dashed border-border-default p-12 text-center text-xs text-ink-faint">
-              Select any event on the left to inspect its details and evidence.
+            <div className="rounded-2xl border-2 border-dashed border-teal-200 bg-gradient-to-br from-teal-50 to-cyan-50/50 p-16 text-center shadow-sm">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-100 border border-teal-200 shadow-md">
+                <AlertTriangle className="h-8 w-8 text-teal-500" />
+              </div>
+              <p className="text-base font-extrabold text-teal-700">No event selected</p>
+              <p className="mt-2 text-sm text-teal-500 max-w-xs mx-auto">
+                Select any timeline record on the left to inspect its evidence and relationships.
+              </p>
             </div>
           )}
         </section>

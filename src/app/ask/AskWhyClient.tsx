@@ -1,7 +1,7 @@
 'use client';
 
-import React, { FormEvent, useState } from 'react';
-import { ArrowUp, Bot, CircleHelp, FolderGit2, LoaderCircle, MessageSquare, Sparkles, Terminal } from 'lucide-react';
+import React, { FormEvent, useState, useEffect } from 'react';
+import { ArrowUp, Bot, CircleHelp, FolderGit2, LoaderCircle, MessageSquareText, Sparkles, Zap } from 'lucide-react';
 import { SAMPLE_REPO_ECOMMERCE } from '@/lib/graph/sample-repo';
 import { useActiveRepo } from '@/lib/repositories/active-repo-client';
 import type { AskWhyResponse } from '@/types/ask';
@@ -10,17 +10,22 @@ import { ReliabilityIndicator } from '@/components/evidence/ReliabilityIndicator
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 
+
 const SUGGESTIONS = [
-  'What does verifySessionToken do?',
-  'Which components depend on jwt.ts?',
-  'Why was token verification changed?',
-  'Has this decision changed over time?',
+  { text: 'What does verifySessionToken do?', bg: 'bg-blue-50', border: 'border-blue-200', textCol: 'text-blue-700', hover: 'hover:bg-blue-100', dot: 'bg-blue-500' },
+  { text: 'Which components depend on jwt.ts?', bg: 'bg-violet-50', border: 'border-violet-200', textCol: 'text-violet-700', hover: 'hover:bg-violet-100', dot: 'bg-violet-500' },
+  { text: 'Why was token verification changed?', bg: 'bg-amber-50', border: 'border-amber-200', textCol: 'text-amber-700', hover: 'hover:bg-amber-100', dot: 'bg-amber-500' },
+  { text: 'Has this decision changed over time?', bg: 'bg-emerald-50', border: 'border-emerald-200', textCol: 'text-emerald-700', hover: 'hover:bg-emerald-100', dot: 'bg-emerald-500' },
 ];
 
-interface ConversationTurn { 
-  question: string; 
-  response: AskWhyResponse; 
-}
+const FOLLOW_UP_COLORS = [
+  { bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-700', hover: 'hover:bg-violet-100' },
+  { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', hover: 'hover:bg-blue-100' },
+  { bg: 'bg-teal-50', border: 'border-teal-200', text: 'text-teal-700', hover: 'hover:bg-teal-100' },
+  { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700', hover: 'hover:bg-indigo-100' },
+];
+
+interface ConversationTurn { question: string; response: AskWhyResponse; }
 
 export function AskWhyClient() {
   const [question, setQuestion] = useState('');
@@ -40,12 +45,7 @@ export function AskWhyClient() {
       const response = await fetch('/api/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          repoId: activeRepo.repoId, 
-          question: trimmed, 
-          conversationId, 
-          recentQuestions: turns.slice(-4).map((turn) => turn.question) 
-        }),
+        body: JSON.stringify({ repoId: activeRepo.repoId, question: trimmed, conversationId, recentQuestions: turns.slice(-4).map((turn) => turn.question) }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'Could not retrieve repository evidence.');
@@ -65,115 +65,115 @@ export function AskWhyClient() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-12">
-      {/* Page Header */}
-      <div className="bg-white border border-border-default rounded-xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-brand-emerald/10 text-brand-deep border border-brand-emerald/20">
-              <Bot className="w-3 h-3 text-brand-emerald" />
-              Engineering Reasoning
-            </span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-surface-muted text-ink-muted border border-border-subtle font-mono">
-              AST Grounded
+    <div className="font-['Inter',sans-serif] max-w-5xl mx-auto space-y-6 pb-12">
+
+      {/* ── Violet Gradient Header Banner ── */}
+      <header className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-violet-600 via-purple-600 to-purple-700 p-7 shadow-lg">
+        {/* Decorative blobs */}
+        <div className="pointer-events-none absolute -top-10 -right-10 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-8 left-16 h-32 w-32 rounded-full bg-purple-400/20 blur-xl" />
+
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 shadow-lg backdrop-blur-sm border border-white/30">
+              <Bot className="h-9 w-9 text-white stroke-[1.5]" aria-hidden />
+            </div>
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-white drop-shadow-sm">Ask Why</h1>
+              <p className="mt-1 text-sm font-medium text-purple-100">
+                Get plain-English answers backed by real code evidence
+              </p>
+            </div>
+          </div>
+
+          {/* Repo & AI Model badges */}
+          <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
+            <div className="flex items-center gap-2 rounded-2xl border border-white/30 bg-white/15 backdrop-blur-sm px-4 py-2.5 shadow-sm">
+              <FolderGit2 className="w-4 h-4 text-purple-100" aria-hidden />
+              <span className="font-bold text-white text-sm">{activeRepo.repoName}</span>
+              {activeRepo.repoId === SAMPLE_REPO_ECOMMERCE.repoId && (
+                <span className="rounded-full bg-amber-400/90 px-2.5 py-0.5 text-xs font-bold text-amber-900 border border-amber-300/50">
+                  Demo
+                </span>
+              )}
+            </div>
+            <span className="inline-flex items-center gap-1.5 rounded-2xl border border-white/30 bg-white/20 backdrop-blur-sm px-3.5 py-2.5 text-xs font-bold text-white shadow-sm">
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              Sarvam AI (105B) + Neo4j
             </span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-semibold text-ink-primary tracking-tight">
-            Ask Why
-          </h1>
-          <p className="text-xs sm:text-sm text-ink-muted mt-1 max-w-xl">
-            Query architectural decisions, dependencies, and rationale with verifiable source code citations.
-          </p>
         </div>
+      </header>
 
-        <div className="flex items-center gap-2.5 flex-wrap self-start md:self-auto">
-          <div className="flex items-center gap-2 rounded-lg border border-border-default bg-surface-secondary px-3 py-1.5 text-xs text-ink-secondary">
-            <FolderGit2 className="w-3.5 h-3.5 text-ink-muted" />
-            <span className="font-mono font-medium">{activeRepo.repoName}</span>
-            {activeRepo.repoId === SAMPLE_REPO_ECOMMERCE.repoId && (
-              <Badge variant="warning" size="sm">Demo</Badge>
-            )}
-          </div>
-          <span className="inline-flex items-center gap-1.5 rounded-lg border border-border-subtle bg-surface-muted px-2.5 py-1.5 text-xs font-mono text-ink-muted">
-            <Sparkles className="w-3 h-3 text-brand-deep" />
-            Sarvam (105B) + Neo4j
-          </span>
-        </div>
-      </div>
-
-      {/* Demo Warning */}
+      {/* ── Alerts ── */}
       {activeRepo.repoId === SAMPLE_REPO_ECOMMERCE.repoId && (
         <Alert type="warning" title="Sample repository data">
-          This workspace uses illustrative sample records. Answers and citations demonstrate the workflow; they do not describe a live GitHub repository.
+          This workspace currently uses illustrative sample records. Answers and citations demonstrate the workflow; they do not describe a live GitHub repository.
         </Alert>
       )}
-
       {error && <Alert type="error" title="Question could not be answered">{error}</Alert>}
 
-      {/* Query Input Box */}
-      <section className="bg-white border border-border-default rounded-xl p-5 shadow-xs" aria-label="Ask a repository question">
+      {/* ── Ask Input Section ── */}
+      <section
+        className="rounded-3xl border-2 border-violet-100 bg-white p-6 shadow-lg"
+        aria-label="Ask a repository question"
+      >
         <form onSubmit={onSubmit}>
-          <div className="flex items-center justify-between mb-2">
-            <label htmlFor="ask-why-question" className="text-xs font-medium text-ink-primary flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-brand-deep" />
-              What would you like to understand about the codebase?
-            </label>
-            <span className="text-[11px] font-mono text-ink-faint">
-              {question.length}/2000
+          <label htmlFor="ask-why-question" className="block text-sm font-bold text-gray-800 mb-3">
+            <span className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-violet-500" />
+              What do you want to understand about the codebase?
             </span>
-          </div>
+          </label>
 
-          <div className="relative rounded-lg border border-border-default bg-surface-secondary focus-within:border-brand-emerald focus-within:ring-1 focus-within:ring-brand-emerald/30 focus-within:bg-white transition-all">
+          <div className="flex items-end gap-3 rounded-2xl border-2 border-gray-200 bg-gray-50 p-3 shadow-sm focus-within:border-violet-500 focus-within:ring-4 focus-within:ring-violet-500/10 focus-within:bg-white transition-all duration-200">
             <textarea
               id="ask-why-question"
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              onKeyDown={(event) => { 
-                if (event.key === 'Enter' && !event.shiftKey) { 
-                  event.preventDefault(); 
-                  void submitQuestion(); 
-                } 
-              }}
+              onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void submitQuestion(); } }}
               maxLength={2000}
               rows={3}
               placeholder="E.g. What does verifySessionToken do? Which components depend on jwt.ts? Why was token verification changed?"
-              className="w-full resize-none bg-transparent p-3.5 pr-14 text-xs text-ink-primary outline-none placeholder:text-ink-faint leading-relaxed font-sans"
+              className="min-h-14 max-h-48 flex-1 resize-y bg-transparent px-2 py-1 text-sm text-gray-800 outline-none placeholder:text-gray-400 leading-relaxed"
+              aria-describedby="ask-why-help"
             />
-            <div className="absolute right-2.5 bottom-2.5">
-              <button
-                type="submit"
-                disabled={loading || question.trim().length < 3}
-                aria-label={loading ? 'Searching repository evidence' : 'Ask question'}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-brand-emerald text-ink-primary font-medium hover:bg-brand-deep hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
-              >
-                {loading
-                  ? <LoaderCircle className="w-4 h-4 animate-spin text-ink-primary" />
-                  : <ArrowUp className="w-4 h-4 stroke-[2.5]" />}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={loading || question.trim().length < 3}
+              aria-label={loading ? 'Searching repository evidence' : 'Ask question'}
+              className="mb-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-purple-700 text-white transition-all hover:from-violet-700 hover:to-purple-800 hover:shadow-lg hover:scale-105 disabled:cursor-not-allowed disabled:opacity-40 shadow-md"
+            >
+              {loading
+                ? <LoaderCircle className="w-5 h-5 animate-spin" />
+                : <ArrowUp className="w-5 h-5 stroke-[2.5]" />}
+            </button>
           </div>
 
-          <div className="mt-2 flex items-center justify-between text-[11px] text-ink-faint">
-            <span>Press <kbd className="rounded bg-surface-muted px-1.5 py-0.5 font-mono text-[10px] text-ink-muted border border-border-subtle">Enter</kbd> to ask · <kbd className="rounded bg-surface-muted px-1.5 py-0.5 font-mono text-[10px] text-ink-muted border border-border-subtle">Shift + Enter</kbd> for newline</span>
+          <div id="ask-why-help" className="mt-2 flex justify-between text-xs text-gray-400">
+            <span>Press <kbd className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-500 border border-gray-200">Enter</kbd> to ask · <kbd className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-500 border border-gray-200">Shift + Enter</kbd> for a new line</span>
+            <span className={question.length > 1800 ? 'text-amber-500 font-bold' : ''}>{question.length}/2000</span>
           </div>
         </form>
 
-        {/* Suggestion Chips */}
+        {/* Suggestion chips — only show before first message */}
         {turns.length === 0 && (
-          <div className="mt-4 pt-4 border-t border-border-subtle">
-            <p className="mb-2 text-[11px] font-mono uppercase tracking-wider text-ink-faint">
-              Suggested questions
+          <div className="mt-5 border-t-2 border-gray-100 pt-5">
+            <p className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gray-400">
+              <Zap className="w-3.5 h-3.5 text-violet-400" />
+              Suggested questions to explore
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2.5">
               {SUGGESTIONS.map((item) => (
                 <button
-                  key={item}
+                  key={item.text}
                   type="button"
-                  onClick={() => { setQuestion(item); void submitQuestion(item); }}
+                  onClick={() => { setQuestion(item.text); void submitQuestion(item.text); }}
                   disabled={loading}
-                  className="rounded-md border border-border-subtle bg-surface-secondary px-3 py-1.5 text-xs text-ink-secondary hover:text-ink-primary hover:border-brand-emerald hover:bg-brand-emerald/5 transition-colors disabled:opacity-50 font-normal"
+                  className={`flex items-center gap-2 rounded-full border-2 ${item.border} ${item.bg} ${item.textCol} ${item.hover} px-4 py-2 text-sm font-semibold transition-all duration-150 shadow-sm hover:scale-105 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
-                  {item}
+                  <span className={`h-2 w-2 rounded-full ${item.dot} shrink-0`} />
+                  {item.text}
                 </button>
               ))}
             </div>
@@ -181,179 +181,220 @@ export function AskWhyClient() {
         )}
       </section>
 
-      {/* Loading State */}
+      {/* ── Loading State ── */}
       {loading && (
-        <div role="status" className="flex items-center gap-3 rounded-xl border border-border-default bg-white p-4 shadow-xs">
-          <LoaderCircle className="h-4 w-4 animate-spin text-brand-deep shrink-0" />
+        <div
+          role="status"
+          className="flex items-center gap-4 rounded-2xl border-2 border-violet-100 bg-gradient-to-r from-violet-50 to-purple-50 p-5 shadow-md"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100">
+            <LoaderCircle className="h-5 w-5 animate-spin text-violet-600" />
+          </div>
           <div>
-            <p className="text-xs font-medium text-ink-primary">Scanning repository evidence…</p>
-            <p className="text-[11px] text-ink-muted">Traversing AST call hierarchy, git revisions, and architectural boundaries</p>
+            <p className="text-sm font-bold text-violet-700">Searching codebase…</p>
+            <p className="text-xs text-violet-500 mt-0.5">Scanning repository structure, AST relationships, and connected commit history</p>
           </div>
         </div>
       )}
 
-      {/* Conversation History */}
+      {/* ── Conversation Turns ── */}
       <div className="space-y-6" aria-live="polite">
         {turns.map(({ question: asked, response }) => (
-          <article key={response.requestId} className="space-y-4">
-            {/* User Question */}
-            <div className="flex justify-end">
-              <div className="max-w-[85%] rounded-xl border border-border-default bg-surface-secondary p-4 shadow-xs">
-                <div className="flex items-center gap-2 mb-1 justify-end text-[11px] text-ink-muted">
-                  <span className="font-mono">{response.questionKind.replaceAll('_', ' ')}</span>
-                  <MessageSquare className="w-3.5 h-3.5" />
+          <article key={response.requestId} className="space-y-5 rounded-3xl border-2 border-gray-100 bg-white shadow-lg overflow-hidden">
+
+            {/* User Question Bubble — right-aligned blue gradient */}
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 px-6 py-5">
+              <div className="flex gap-3.5 justify-end">
+                <div className="max-w-[85%] min-w-0">
+                  <p className="text-base font-bold text-white leading-snug">{asked}</p>
+                  <div className="mt-2 flex items-center justify-end gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200">Category:</span>
+                    <span className="text-xs font-bold text-blue-900 bg-white/90 px-2.5 py-0.5 rounded-full border border-blue-100 shadow-sm">
+                      {response.questionKind.replaceAll('_', ' ')}
+                    </span>
+                  </div>
                 </div>
-                <p className="text-xs sm:text-sm font-medium text-ink-primary leading-relaxed">{asked}</p>
+                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20 border border-white/30 shadow-sm">
+                  <MessageSquareText className="h-4 w-4 text-white stroke-[2]" aria-hidden />
+                </div>
               </div>
             </div>
 
-            {/* AI Response Card */}
-            <div className="bg-white border border-border-default rounded-xl p-5 sm:p-6 shadow-xs space-y-5">
-              {/* Badges Bar */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-border-subtle">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-brand-emerald/10 text-brand-deep flex items-center justify-center">
-                    <Bot className="w-3.5 h-3.5" />
+            {/* AI Answer — left-aligned white card with violet left border */}
+            <div className="px-6 pb-6">
+              <div className="flex gap-4">
+                <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-md">
+                  <Bot className="h-5 w-5 stroke-[1.5]" aria-hidden />
+                </div>
+
+                <div className="min-w-0 flex-1 space-y-5">
+                  {/* Answer Mode Badge */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold border ${response.answerMode === 'ai' ? 'bg-violet-100 text-violet-700 border-violet-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                      <Sparkles className="w-3 h-3" />
+                      {response.answerMode === 'ai' ? 'Evidence-grounded synthesis' : 'Evidence-only'}
+                    </span>
+                    {response.sarvamDetails && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        {response.sarvamDetails.model}
+                      </span>
+                    )}
+                    {response.neo4jGrounded && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold bg-blue-100 text-blue-800 border border-blue-300 shadow-xs">
+                        Neo4j Grounded
+                      </span>
+                    )}
+                    {response.modelNote && (
+                      <span className="text-xs font-medium text-gray-500 bg-gray-50 px-2.5 py-1 rounded-full border border-gray-200">{response.modelNote}</span>
+                    )}
                   </div>
-                  <span className="text-xs font-semibold text-ink-primary">CodeWhy Synthesis</span>
-                  <Badge variant={response.answerMode === 'ai' ? 'success' : 'outline'} size="sm">
-                    {response.answerMode === 'ai' ? 'Grounded' : 'Evidence-only'}
-                  </Badge>
-                  {response.neo4jGrounded && (
-                    <Badge variant="purple" size="sm">Neo4j Verified</Badge>
+
+                  {/* Answer Text */}
+                  <div className="rounded-2xl border-l-4 border-violet-500 bg-gradient-to-br from-violet-50 to-purple-50/50 px-5 py-4 shadow-sm">
+                    <div className="space-y-3 text-sm leading-relaxed text-gray-800">
+                      {response.answer.split('\n\n').map((paragraph, part) => (
+                        <p key={part} className="whitespace-pre-wrap">{paragraph}</p>
+                      ))}
+                    </div>
+
+                    {response.sarvamDetails?.limitations && (
+                      <div className="mt-4 pt-3 border-t border-violet-200 text-xs text-amber-900 bg-amber-50/70 p-3 rounded-xl border border-amber-200 font-medium">
+                        <span className="font-extrabold text-amber-950">Verification Scope:</span> {response.sarvamDetails.limitations}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Claims / Cited Evidence */}
+                  {response.claims.length > 0 && (
+                    <div className="rounded-2xl border-2 border-blue-100 bg-blue-50/70 p-4">
+                      <p className="mb-3 flex items-center gap-2 text-xs font-bold text-blue-700 uppercase tracking-wider">
+                        <span className="h-2 w-2 rounded-full bg-blue-500" />
+                        Cited Evidence Findings
+                      </p>
+                      <div className="space-y-2">
+                        {response.claims.map((claim, claimIndex) => (
+                          <div key={`${claim.evidenceIds.join('-')}-${claimIndex}`} className="flex flex-wrap items-center gap-2 text-xs">
+                            <span className={`font-bold px-2.5 py-1 rounded-full border ${
+                              claim.directness === 'direct'
+                                ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                                : claim.directness === 'indirect'
+                                  ? 'bg-amber-100 text-amber-700 border-amber-200'
+                                  : 'bg-gray-100 text-gray-600 border-gray-200'
+                            }`}>
+                              {claim.directness === 'direct' ? '✓ Observed directly in AST' : claim.directness === 'indirect' ? '⟳ Inferred relation' : '◎ Model interpretation'}
+                            </span>
+                            <div className="inline-flex gap-1.5 flex-wrap">
+                              {claim.evidenceIds.map((id) => (
+                                <a
+                                  key={id}
+                                  href={`#evidence-${response.requestId}-${id}`}
+                                  className="rounded-full border-2 border-blue-200 bg-white px-2.5 py-0.5 font-mono text-xs font-bold text-blue-600 hover:bg-blue-50 hover:border-blue-400 transition-all shadow-sm"
+                                >
+                                  Source {response.evidence.findIndex((item) => item.id === id) + 1}
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reliability Indicator */}
+                  <ReliabilityIndicator assessment={response.reliability} />
+
+                  {/* Supporting Evidence Citations */}
+                  <section aria-label="Supporting evidence" className="space-y-4">
+                    <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-200 px-4 py-2.5">
+                      <h2 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-full bg-violet-500" />
+                        Supporting Evidence Citations
+                      </h2>
+                      <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-bold text-violet-700 border border-violet-200">
+                        {response.evidence.length} {response.evidence.length === 1 ? 'record' : 'records'}
+                      </span>
+                    </div>
+
+                    {response.evidence.length ? (
+                      <div className="space-y-3">
+                        {groupEvidence(response.evidence).map((group) => (
+                          <div key={group.key} className="space-y-2">
+                            <h3 className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider px-1 ${group.conflict ? 'text-amber-600' : 'text-gray-500'}`}>
+                              {group.conflict && <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />}
+                              {group.label}{group.conflict ? ' · Compare both sources' : ''}
+                            </h3>
+                            <div className="space-y-2">
+                              {group.items.map((item) => (
+                                <div key={item.id} id={`evidence-${response.requestId}-${item.id}`} className="scroll-mt-6">
+                                  <EvidenceCard evidence={item} compact={response.evidence.length > 4} />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border-2 border-dashed border-gray-200 p-6 text-center">
+                        <CircleHelp className="mx-auto mb-2 h-8 w-8 text-gray-300" />
+                        <p className="text-sm font-semibold text-gray-400">No supporting source records were retrieved for this query.</p>
+                      </div>
+                    )}
+                  </section>
+
+                  {/* Follow-up Suggestions */}
+                  {response.followUpQuestions.length > 0 && (
+                    <section aria-label="Suggested follow-up questions" className="rounded-2xl border-2 border-violet-100 bg-gradient-to-br from-violet-50 to-purple-50/50 p-4">
+                      <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-violet-600">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Suggested follow-up inquiries
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {response.followUpQuestions.map((followUp, idx) => {
+                          const color = FOLLOW_UP_COLORS[idx % FOLLOW_UP_COLORS.length];
+                          return (
+                            <button
+                              key={followUp}
+                              type="button"
+                              onClick={() => { setQuestion(followUp); void submitQuestion(followUp); }}
+                              disabled={loading}
+                              className={`rounded-full border-2 ${color.border} ${color.bg} ${color.text} ${color.hover} px-3.5 py-1.5 text-left text-sm font-semibold transition-all duration-150 hover:scale-105 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed`}
+                            >
+                              {followUp} →
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
                   )}
                 </div>
-
-                {response.sarvamDetails && (
-                  <span className="text-[11px] font-mono text-ink-muted">
-                    {response.sarvamDetails.model}
-                  </span>
-                )}
               </div>
-
-              {/* Answer Text */}
-              <div className="text-xs sm:text-sm leading-relaxed text-ink-secondary space-y-3 font-normal">
-                {response.answer.split('\n\n').map((paragraph, part) => (
-                  <p key={part} className="whitespace-pre-wrap">{paragraph}</p>
-                ))}
-              </div>
-
-              {response.sarvamDetails?.limitations && (
-                <div className="text-[11px] text-ink-muted bg-surface-secondary p-2.5 rounded-lg border border-border-subtle">
-                  <strong className="text-ink-secondary">Verification Scope:</strong> {response.sarvamDetails.limitations}
-                </div>
-              )}
-
-              {/* Claims / Cited Evidence Links */}
-              {response.claims.length > 0 && (
-                <div className="bg-surface-secondary border border-border-subtle rounded-lg p-3.5 space-y-2">
-                  <div className="text-[11px] font-mono uppercase tracking-wider text-ink-muted">
-                    Evidence Assertions
-                  </div>
-                  <div className="space-y-1.5">
-                    {response.claims.map((claim, claimIndex) => (
-                      <div key={`${claim.evidenceIds.join('-')}-${claimIndex}`} className="flex flex-wrap items-center gap-2 text-xs">
-                        <Badge variant={claim.directness === 'direct' ? 'success' : 'warning'} size="sm">
-                          {claim.directness === 'direct' ? 'Direct AST' : 'Inferred'}
-                        </Badge>
-                        <div className="inline-flex gap-1.5 flex-wrap">
-                          {claim.evidenceIds.map((id) => (
-                            <a
-                              key={id}
-                              href={`#evidence-${response.requestId}-${id}`}
-                              className="rounded bg-white px-2 py-0.5 font-mono text-[11px] font-medium text-brand-deep border border-border-default hover:border-brand-emerald transition-colors"
-                            >
-                              Source {response.evidence.findIndex((item) => item.id === id) + 1}
-                            </a>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Reliability Indicator */}
-              <ReliabilityIndicator assessment={response.reliability} />
-
-              {/* Evidence Citations */}
-              <section aria-label="Supporting evidence" className="space-y-3 pt-2">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-semibold text-ink-primary">
-                    Supporting Citations ({response.evidence.length})
-                  </h3>
-                </div>
-
-                {response.evidence.length > 0 ? (
-                  <div className="space-y-2.5">
-                    {groupEvidence(response.evidence).map((group) => (
-                      <div key={group.key} className="space-y-2">
-                        <div className="text-[11px] font-mono uppercase text-ink-faint px-1">
-                          {group.label}
-                        </div>
-                        <div className="space-y-2">
-                          {group.items.map((item) => (
-                            <div key={item.id} id={`evidence-${response.requestId}-${item.id}`} className="scroll-mt-6">
-                              <EvidenceCard evidence={item} compact={response.evidence.length > 4} />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-dashed border-border-default p-4 text-center text-xs text-ink-faint">
-                    No supporting source records retrieved for this query.
-                  </div>
-                )}
-              </section>
-
-              {/* Follow-up Questions */}
-              {response.followUpQuestions.length > 0 && (
-                <div className="pt-3 border-t border-border-subtle">
-                  <p className="text-[11px] font-mono uppercase tracking-wider text-ink-faint mb-2">
-                    Suggested follow-up inquiries
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {response.followUpQuestions.map((followUp) => (
-                      <button
-                        key={followUp}
-                        type="button"
-                        onClick={() => { setQuestion(followUp); void submitQuestion(followUp); }}
-                        disabled={loading}
-                        className="rounded-md border border-border-subtle bg-surface-secondary px-2.5 py-1 text-xs text-ink-secondary hover:text-ink-primary hover:border-brand-emerald hover:bg-brand-emerald/5 transition-colors disabled:opacity-50"
-                      >
-                        {followUp} &rarr;
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </article>
         ))}
       </div>
 
-      {/* Empty State */}
+      {/* ── Empty State ── */}
       {turns.length === 0 && !loading && (
-        <div className="rounded-xl border border-dashed border-border-default bg-white p-12 text-center">
-          <div className="mx-auto w-10 h-10 rounded-lg bg-surface-muted text-ink-muted flex items-center justify-center mb-3">
-            <Bot className="w-5 h-5 text-brand-deep" />
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-200">
+            <Bot className="h-12 w-12 text-white stroke-[1.5]" aria-hidden />
           </div>
-          <h2 className="text-sm font-semibold text-ink-primary mb-1">Ask your first question</h2>
-          <p className="text-xs text-ink-muted max-w-sm mx-auto mb-5">
-            Grounded code evidence, callers, and architectural context will be synthesized here.
+          <h2 className="text-2xl font-extrabold text-gray-800 mb-2">Ask your first question</h2>
+          <p className="text-sm text-gray-500 max-w-sm mb-8 leading-relaxed">
+            Your questions and grounded architectural evidence will appear here. Try one of the suggestions above to get started.
           </p>
-          <div className="flex flex-wrap justify-center gap-2 max-w-md mx-auto">
+          <div className="flex flex-wrap justify-center gap-2.5">
             {SUGGESTIONS.map((item) => (
               <button
-                key={item}
+                key={item.text}
                 type="button"
-                onClick={() => { setQuestion(item); void submitQuestion(item); }}
+                onClick={() => { setQuestion(item.text); void submitQuestion(item.text); }}
                 disabled={loading}
-                className="rounded-md border border-border-subtle bg-surface-secondary px-2.5 py-1 text-xs text-ink-secondary hover:text-ink-primary hover:border-brand-emerald transition-colors"
+                className={`flex items-center gap-2 rounded-full border-2 ${item.border} ${item.bg} ${item.textCol} ${item.hover} px-4 py-2 text-sm font-semibold transition-all duration-150 shadow-sm hover:scale-105 hover:shadow-md disabled:opacity-50`}
               >
-                {item}
+                <span className={`h-2 w-2 rounded-full ${item.dot} shrink-0`} />
+                {item.text}
               </button>
             ))}
           </div>

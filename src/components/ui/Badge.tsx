@@ -1,20 +1,9 @@
 import React from 'react';
 
-export interface BadgeProps {
+interface BadgeProps {
   children: React.ReactNode;
-  variant?:
-    | 'default'
-    | 'success'
-    | 'warning'
-    | 'error'
-    | 'info'
-    | 'purple'
-    | 'teal'
-    | 'dark'
-    | 'outline'
-    | 'mint'
-    | 'peach';
-  size?: 'xs' | 'sm' | 'md';
+  variant?: 'default' | 'success' | 'warning' | 'error' | 'info' | 'purple' | 'teal' | 'mint' | 'peach' | 'outline';
+  size?: 'sm' | 'md';
   icon?: React.ReactNode;
   className?: string;
 }
@@ -26,29 +15,24 @@ export const Badge: React.FC<BadgeProps> = ({
   icon,
   className = '',
 }) => {
-  const sizeStyles = {
-    xs: 'text-[10px] px-1.5 py-0.2 rounded-full font-medium tracking-tight',
-    sm: 'text-[11px] px-2 py-0.5 rounded-full font-medium tracking-tight',
-    md: 'text-xs px-2.5 py-1 rounded-full font-medium',
-  }[size];
-
+  const sizeStyles = size === 'sm' ? 'text-[11px] px-2.5 py-0.5' : 'text-xs px-3 py-1';
+  
   const variantStyles = {
-    default: 'bg-[#F4F4F5] text-[#212121] border border-[#EDEDED]',
-    success: 'bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]',
-    warning: 'bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A]',
-    error: 'bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA]',
-    info: 'bg-[#EFF6FF] text-[#1E40AF] border border-[#BFDBFE]',
-    purple: 'bg-[#F5F3FF] text-[#5B21B6] border border-[#DDD6FE]',
-    teal: 'bg-[#F0FDFA] text-[#115E59] border border-[#99F6E4]',
-    dark: 'bg-[#1C1C1C] text-[#FAFAFA] border border-[#2E2E2E]',
-    outline: 'bg-white text-[#707070] border border-[#EDEDED]',
-    mint: 'bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]',
-    peach: 'bg-[#FFF7ED] text-[#9A3412] border border-[#FED7AA]',
+    default: 'bg-white text-text-secondary border-app-border shadow-2xs',
+    success: 'bg-[#ECFDF5] text-emerald-800 border-emerald-200 font-semibold',
+    warning: 'bg-[#FFFBEB] text-amber-900 border-amber-300 font-semibold',
+    error: 'bg-[#FEF2F2] text-rose-800 border-rose-200 font-semibold',
+    info: 'bg-[#EBF2FF] text-[#2563EB] border-[#BFDBFE] font-semibold',
+    purple: 'bg-[#F5F3FF] text-[#7C3AED] border-[#DDD6FE] font-semibold',
+    teal: 'bg-[#F0FDFA] text-[#0D9488] border-[#99F6E4] font-semibold',
+    mint: 'bg-[#ECFDF5] text-[#059669] border-[#A7F3D0] font-semibold',
+    peach: 'bg-[#FFF7ED] text-[#C2410C] border-[#FED7AA] font-semibold',
+    outline: 'bg-white/80 text-text-secondary border-app-border',
   }[variant];
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 select-none transition-colors ${sizeStyles} ${variantStyles} ${className}`}
+      className={`inline-flex items-center gap-1.5 font-medium border rounded-md ${sizeStyles} ${variantStyles} ${className}`}
     >
       {icon}
       {children}

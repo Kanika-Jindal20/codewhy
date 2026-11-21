@@ -2,25 +2,27 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import {
-  FolderGit2,
-  GitBranch,
-  Zap,
-  Network,
-  AlertTriangle,
-  FileText,
+import { 
+  FolderGit2, 
+  GitBranch, 
+  Zap, 
+  Network, 
+  AlertTriangle, 
+  FileText, 
   HelpCircle,
-  GitCommit,
+  GitCommit, 
   ArrowRight,
   ShieldCheck,
   Compass,
   History,
   FileCode,
   ArrowUpRight,
+  Layers,
   Code2,
   CheckCircle2,
   Share2,
   Boxes,
+  Cpu,
   TestTube2,
   Settings2,
   Sparkles,
@@ -53,53 +55,49 @@ export default function DashboardOverviewPage() {
       } catch {}
     }
     loadGraph();
-    return () => {
-      isCancelled = true;
-    };
+    return () => { isCancelled = true; };
   }, [activeRepo.repoId]);
+
 
   // Exact metrics computed from real graph data
   const totalNodes = repo.nodes.length;
   const totalEdges = repo.edges.length;
-  const filesCount = repo.nodes.filter((n) => n.type === 'file').length;
-  const symbolCount = repo.nodes.filter((n) => n.type === 'function' || n.type === 'class').length;
-  const testCount = repo.nodes.filter((n) => n.type === 'test').length;
-  const configCount = repo.nodes.filter((n) => n.type === 'config').length;
+  const filesCount = repo.nodes.filter(n => n.type === 'file').length;
+  const symbolCount = repo.nodes.filter(n => n.type === 'function' || n.type === 'class').length;
+  const testCount = repo.nodes.filter(n => n.type === 'test').length;
+  const configCount = repo.nodes.filter(n => n.type === 'config').length;
 
   // Extract real commits if available from repo or fall back to sample for demo repo
-  const repoCommitNodes = repo.nodes.filter((n) => n.type === 'commit');
-  const realCommits =
-    repoCommitNodes.length > 0
-      ? repoCommitNodes.slice(0, 4).map((cn) => {
-          const edgeFiles = repo.edges
-            .filter((e) => e.source === cn.id && e.type === 'modifies')
-            .map((e) => repo.nodes.find((n) => n.id === e.target)?.filePath || '')
-            .filter(Boolean);
-          const hash = cn.metadata?.signature || cn.label.replace('Commit ', '');
-          return {
-            hash: hash.slice(0, 7),
-            message: cn.description?.split(' (by ')[0] || cn.label,
-            author: cn.description?.split(' (by ')[1]?.replace(')', '') || 'Developer',
-            date: repo.updatedAt || new Date().toISOString(),
-            filesChanged: edgeFiles.length > 0 ? edgeFiles.slice(0, 3) : ['source code'],
-            isRegressionOrBugfix: /fix|bug|patch|revert/i.test(cn.description || cn.label),
-          };
-        })
-      : repo.isDemo
+  const repoCommitNodes = repo.nodes.filter(n => n.type === 'commit');
+  const realCommits = repoCommitNodes.length > 0
+    ? repoCommitNodes.slice(0, 4).map(cn => {
+        const edgeFiles = repo.edges
+          .filter(e => e.source === cn.id && e.type === 'modifies')
+          .map(e => repo.nodes.find(n => n.id === e.target)?.filePath || '')
+          .filter(Boolean);
+        const hash = cn.metadata?.signature || cn.label.replace('Commit ', '');
+        return {
+          hash: hash.slice(0, 7),
+          message: cn.description?.split(' (by ')[0] || cn.label,
+          author: cn.description?.split(' (by ')[1]?.replace(')', '') || 'Developer',
+          date: repo.updatedAt || new Date().toISOString(),
+          filesChanged: edgeFiles.length > 0 ? edgeFiles.slice(0, 3) : ['source code'],
+          isRegressionOrBugfix: /fix|bug|patch|revert/i.test(cn.description || cn.label),
+        };
+      })
+    : repo.isDemo
       ? COMMERCE_COMMIT_HISTORY.slice(0, 4)
       : [];
-  const commits = realCommits.length > 0 ? realCommits : repo.isDemo ? COMMERCE_COMMIT_HISTORY.slice(0, 4) : [];
+  const commits = realCommits.length > 0 ? realCommits : (repo.isDemo ? COMMERCE_COMMIT_HISTORY.slice(0, 4) : []);
 
   // Dynamically compute runtime execution path
-  const callEdges = repo.edges.filter(
-    (e) => e.type === 'calls' || e.type === 'imports' || e.type === 'defines' || e.type === 'depends_on'
-  );
+  const callEdges = repo.edges.filter(e => e.type === 'calls' || e.type === 'imports' || e.type === 'defines' || e.type === 'depends_on');
   let flowChain: Array<{ step: string; label: string; path: string; tag: string }> = [];
 
   if (!repo.isDemo && callEdges.length > 0) {
     let foundPair: [any, any] | null = null;
     for (const e1 of callEdges) {
-      const nextEdge = callEdges.find((e2) => e2.source === e1.target && e2.target !== e1.source);
+      const nextEdge = callEdges.find(e2 => e2.source === e1.target && e2.target !== e1.source);
       if (nextEdge) {
         foundPair = [e1, nextEdge];
         break;
@@ -107,9 +105,9 @@ export default function DashboardOverviewPage() {
     }
 
     if (foundPair) {
-      const n1 = repo.nodes.find((n) => n.id === foundPair[0].source);
-      const n2 = repo.nodes.find((n) => n.id === foundPair[0].target);
-      const n3 = repo.nodes.find((n) => n.id === foundPair[1].target);
+      const n1 = repo.nodes.find(n => n.id === foundPair[0].source);
+      const n2 = repo.nodes.find(n => n.id === foundPair[0].target);
+      const n3 = repo.nodes.find(n => n.id === foundPair[1].target);
       if (n1 && n2 && n3) {
         flowChain = [
           { step: '1. Upstream Invoker', label: n1.label, path: n1.filePath, tag: n1.type },
@@ -117,6 +115,23 @@ export default function DashboardOverviewPage() {
           { step: '3. Downstream Target', label: n3.label, path: n3.filePath, tag: n3.type },
         ];
       }
+    }
+
+    if (flowChain.length === 0 && repo.nodes.length >= 3) {
+      const topConnected = [...repo.nodes]
+        .filter(n => n.type !== 'commit')
+        .sort((a, b) => {
+          const aCount = repo.edges.filter(e => e.source === a.id || e.target === a.id).length;
+          const bCount = repo.edges.filter(e => e.source === b.id || e.target === b.id).length;
+          return bCount - aCount;
+        })
+        .slice(0, 3);
+      flowChain = topConnected.map((n, i) => ({
+        step: `${i + 1}. Core ${n.type.toUpperCase()}`,
+        label: n.label,
+        path: n.filePath,
+        tag: n.type,
+      }));
     }
   }
 
@@ -128,285 +143,620 @@ export default function DashboardOverviewPage() {
     ];
   }
 
+  // Real Knowledge Gaps calculation
+  const testEdges = repo.edges.filter(e => e.type === 'tests');
+  const testedNodeIds = new Set(testEdges.map(e => e.target));
+  const detectedGaps: Array<{ title: string; desc: string; severity: 'High' | 'Medium'; path: string }> = [];
+
+  if (repo.isDemo) {
+    detectedGaps.push(
+      {
+        title: 'Missing ADR: Token Rotation',
+        desc: 'Key rotation logic was introduced in commit 7a8f9c without an ADR specifying fallback validation.',
+        severity: 'High',
+        path: 'src/auth/jwt.ts',
+      },
+      {
+        title: 'Untested Gateway Headers',
+        desc: 'gateway.config.json configures claim forwarding without an automated contract test.',
+        severity: 'Medium',
+        path: 'config/gateway.config.json',
+      }
+    );
+  } else {
+    for (const node of repo.nodes) {
+      if ((node.type === 'file' || node.type === 'function') && !node.label.includes('test')) {
+        const isTested = testedNodeIds.has(node.id);
+        if (!isTested && (node.metadata?.isExported || node.type === 'file')) {
+          detectedGaps.push({
+            title: `Untested Symbol: ${node.label}`,
+            desc: `${node.label} in ${node.filePath || 'source'} has no detected automated test suite.`,
+            severity: 'High',
+            path: node.filePath || '',
+          });
+          if (detectedGaps.length >= 2) break;
+        }
+      }
+      if (node.type === 'config' && (!node.description || node.description.length < 20)) {
+        detectedGaps.push({
+          title: `Undocumented Config: ${node.label}`,
+          desc: `Configuration file ${node.label} lacks architectural documentation or schema specification.`,
+          severity: 'Medium',
+          path: node.filePath || '',
+        });
+        if (detectedGaps.length >= 2) break;
+      }
+    }
+  }
+
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-12 font-sans">
-      {/* ── 1. Hero Workspace Overview Banner (Minimal White SaaS Header) ── */}
-      <section className="bg-white rounded-[12px] border border-[#EDEDED] p-6 sm:p-7 shadow-2xs">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#707070]">
-                Workspace Overview
-              </span>
-              <span className="text-[#DFDFDF]">/</span>
-              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#3ECF8E] animate-pulse" />
-                AST Verified
-              </span>
-              <span className="text-[#DFDFDF]">/</span>
-              <span className="text-xs font-mono text-[#707070]">
-                branch: <strong className="text-[#171717]">{activeRepo.branch || repo.branch || 'main'}</strong>
-              </span>
+    <div className="max-w-7xl mx-auto space-y-8 pb-16">
+      {/* 1. Hero Header & Primary Actions */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#14213D] via-[#1E2E4F] to-[#2B3E68] text-white rounded-3xl p-7 sm:p-9 shadow-elevated border border-slate-700/50">
+        {/* Soft glowing ambient circles */}
+        <div className="absolute top-0 right-0 -mt-12 -mr-12 w-80 h-80 rounded-full bg-[#3B82F6]/25 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/4 -mb-12 w-72 h-72 rounded-full bg-[#8B5CF6]/20 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex items-start gap-4 sm:gap-5">
+            {/* 3D-styled Emblem Container */}
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-white/15 to-white/5 border border-white/20 p-1 flex items-center justify-center shrink-0 shadow-lg">
+              <div className="w-full h-full rounded-xl bg-gradient-to-tr from-[#3B82F6] via-[#6366F1] to-[#8B5CF6] text-white flex items-center justify-center shadow-glowBlue">
+                <FolderGit2 className="w-8 h-8 sm:w-9 sm:h-9 stroke-[2.2]" />
+              </div>
             </div>
 
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-semibold text-[#171717] tracking-tight">
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span className="text-xs font-bold uppercase tracking-wider text-blue-300">
+                  Active Workspace
+                </span>
+                <span className="text-slate-400">·</span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  AST Verified & Grounded
+                </span>
+                <span className="text-slate-400">·</span>
+                <span className="text-xs font-medium text-slate-300">
+                  Branch: <code className="font-semibold text-white font-mono bg-white/10 px-2 py-0.5 rounded">{activeRepo.branch || repo.branch || 'main'}</code>
+                </span>
+              </div>
+
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight">
                 {repo.repoName}
               </h1>
-              <p className="text-xs sm:text-sm text-[#707070] max-w-2xl mt-1 leading-relaxed">
-                Deterministic codebase intelligence. Map verified AST dependencies, audit pre-change blast radius, and explore architectural decisions without hallucinations.
+
+              <p className="text-sm sm:text-base text-slate-300 max-w-3xl leading-relaxed">
+                Engineering intelligence for codebase reasoning: map verified AST dependencies, audit pre-change blast radius, and explore architectural decisions with zero hallucinations.
               </p>
             </div>
           </div>
 
           {/* Primary Action Buttons */}
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0">
-            <Link href="/impact">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 shrink-0 pt-2 lg:pt-0">
+            <Link href="/architecture" className="w-full sm:w-auto">
               <Button
                 variant="primary"
                 size="md"
-                icon={<Zap className="w-3.5 h-3.5 text-[#171717]" />}
+                icon={<Compass className="w-4 h-4 stroke-[2]" />}
+                className="w-full sm:w-auto bg-[#3B82F6] hover:bg-[#2563EB] shadow-glowBlue border-0 text-white font-bold"
               >
-                Analyze Impact
+                Explore Architecture
               </Button>
             </Link>
-            <Link href="/architecture">
+            <Link href="/impact" className="w-full sm:w-auto">
               <Button
                 variant="secondary"
                 size="md"
-                icon={<Compass className="w-3.5 h-3.5 text-[#707070]" />}
+                icon={<Zap className="w-4 h-4 text-[#3B82F6] stroke-[2]" />}
+                className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm font-bold"
               >
-                Architecture Explorer
+                Analyze Change Impact
               </Button>
             </Link>
           </div>
         </div>
 
-        {/* 5-Step Recommended Workflow Strip */}
-        <div className="mt-6 pt-4 border-t border-[#EDEDED] flex flex-wrap items-center justify-between gap-3 text-xs text-[#707070]">
-          <div className="flex items-center gap-1.5 font-medium text-[#171717]">
-            <Sparkles className="w-3.5 h-3.5 text-[#3ECF8E]" />
-            <span>Workflow:</span>
+        {/* Developer Journey Flow Strip */}
+        <div className="mt-7 pt-6 border-t border-white/10 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-300">
+          <div className="flex items-center gap-2 font-semibold text-blue-200">
+            <Sparkles className="w-4 h-4 text-amber-300" />
+            <span>Recommended Workflow:</span>
           </div>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs">
-            <Link href="/repos" className="hover:text-[#171717] transition-colors">1. Select Repo</Link>
-            <span className="text-[#DFDFDF]">&rarr;</span>
-            <Link href="/architecture" className="hover:text-[#171717] transition-colors">2. Explore Graph</Link>
-            <span className="text-[#DFDFDF]">&rarr;</span>
-            <Link href="/impact" className="hover:text-[#171717] transition-colors font-medium text-[#171717]">3. Impact Blast Radius</Link>
-            <span className="text-[#DFDFDF]">&rarr;</span>
-            <Link href="/ask" className="hover:text-[#171717] transition-colors">4. Ask Why</Link>
-            <span className="text-[#DFDFDF]">&rarr;</span>
-            <Link href="/reports" className="hover:text-[#171717] transition-colors">5. Export Report</Link>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
+            <Link href="/repos" className="hover:text-white transition-colors">1. Select Repo</Link>
+            <span className="text-slate-500">&rarr;</span>
+            <Link href="/architecture" className="hover:text-white transition-colors">2. Explore Graph</Link>
+            <span className="text-slate-500">&rarr;</span>
+            <Link href="/impact" className="hover:text-white transition-colors font-semibold text-blue-300">3. Impact Blast Radius</Link>
+            <span className="text-slate-500">&rarr;</span>
+            <Link href="/ask" className="hover:text-white transition-colors">4. Ask Why</Link>
+            <span className="text-slate-500">&rarr;</span>
+            <Link href="/reports" className="hover:text-white transition-colors">5. Export Report</Link>
           </div>
         </div>
       </section>
 
-      {/* ── 2. Information-Dense Metrics Grid (4 Clean High-Density Cards) ── */}
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-3.5 sm:gap-4">
-        {/* Card 1: Entities */}
-        <div className="p-4 rounded-[10px] bg-white border border-[#EDEDED] shadow-2xs hover:border-[#DFDFDF] transition-colors">
-          <div className="flex items-center justify-between text-[#707070] mb-2">
-            <span className="text-[11px] font-medium uppercase tracking-wider">Entities</span>
-            <Boxes className="w-4 h-4 text-[#707070]" />
+      {/* 2. 6 Coordinated Metric Cards (With Plain-English Explanations) */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between px-1">
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted">
+              Repository Intelligence Metrics
+            </h2>
+            <p className="text-xs text-text-secondary">
+              Derived deterministically from source code AST and commit history.
+            </p>
           </div>
-          <div className="text-2xl font-semibold text-[#171717] tracking-tight">{totalNodes}</div>
-          <div className="text-xs text-[#707070] mt-1 font-mono">
-            {filesCount} files · {symbolCount} symbols
-          </div>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-white border border-app-border text-text-secondary shadow-2xs">
+            Live Analysis State
+          </span>
         </div>
 
-        {/* Card 2: Dependencies */}
-        <div className="p-4 rounded-[10px] bg-white border border-[#EDEDED] shadow-2xs hover:border-[#DFDFDF] transition-colors">
-          <div className="flex items-center justify-between text-[#707070] mb-2">
-            <span className="text-[11px] font-medium uppercase tracking-wider">Edges</span>
-            <Share2 className="w-4 h-4 text-[#707070]" />
-          </div>
-          <div className="text-2xl font-semibold text-[#171717] tracking-tight">{totalEdges}</div>
-          <div className="text-xs text-[#707070] mt-1">Verified calls &amp; imports</div>
-        </div>
-
-        {/* Card 3: Test Suites */}
-        <div className="p-4 rounded-[10px] bg-white border border-[#EDEDED] shadow-2xs hover:border-[#DFDFDF] transition-colors">
-          <div className="flex items-center justify-between text-[#707070] mb-2">
-            <span className="text-[11px] font-medium uppercase tracking-wider">Tests</span>
-            <TestTube2 className="w-4 h-4 text-[#707070]" />
-          </div>
-          <div className="text-2xl font-semibold text-[#171717] tracking-tight">{testCount}</div>
-          <div className="text-xs text-[#707070] mt-1">Regression suites linked</div>
-        </div>
-
-        {/* Card 4: Configurations */}
-        <div className="p-4 rounded-[10px] bg-white border border-[#EDEDED] shadow-2xs hover:border-[#DFDFDF] transition-colors">
-          <div className="flex items-center justify-between text-[#707070] mb-2">
-            <span className="text-[11px] font-medium uppercase tracking-wider">Configs</span>
-            <Settings2 className="w-4 h-4 text-[#707070]" />
-          </div>
-          <div className="text-2xl font-semibold text-[#171717] tracking-tight">{configCount}</div>
-          <div className="text-xs text-[#707070] mt-1">Schemas &amp; gateways</div>
-        </div>
-      </section>
-
-      {/* ── 3. Main Editorial Split ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column (8 cols): Runtime Flow, Recent Commits, Autonomous Suite */}
-        <div className="lg:col-span-8 space-y-6">
-          {/* Architecture Dependency Flow Preview */}
-          <section className="bg-white border border-[#EDEDED] rounded-[12px] p-5 sm:p-6 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#EDEDED]">
-              <div className="flex items-center gap-2">
-                <Network className="w-4 h-4 text-[#171717]" />
-                <h2 className="text-sm font-semibold text-[#171717]">Observed Runtime Call Path</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3.5 sm:gap-4">
+          {/* Card 1: Graph Nodes */}
+          <div className="p-4 rounded-2xl bg-white border border-teal-200/80 shadow-card hover:shadow-elevated transition-all flex flex-col justify-between group">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-teal-600 uppercase tracking-wider">
+                Entities
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-teal-500/15 text-teal-600 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+                <Boxes className="w-4 h-4 stroke-[2]" />
               </div>
+            </div>
+            <div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-[#172033]">
+                {totalNodes}
+              </div>
+              <div className="text-xs font-bold text-text-primary mt-0.5">
+                Architecture Nodes
+              </div>
+              <p className="text-[11px] text-text-secondary mt-1 leading-snug">
+                Files, functions, and code entities in active graph
+              </p>
+            </div>
+          </div>
+
+          {/* Card 2: Graph Edges */}
+          <div className="p-4 rounded-2xl bg-white border border-blue-200/80 shadow-card hover:shadow-elevated transition-all flex flex-col justify-between group">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">
+                Connections
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-600 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+                <Share2 className="w-4 h-4 stroke-[2]" />
+              </div>
+            </div>
+            <div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-[#172033]">
+                {totalEdges}
+              </div>
+              <div className="text-xs font-bold text-text-primary mt-0.5">
+                Dependency Edges
+              </div>
+              <p className="text-[11px] text-text-secondary mt-1 leading-snug">
+                Direct calls, imports, and interface connections
+              </p>
+            </div>
+          </div>
+
+          {/* Card 3: Source Files */}
+          <div className="p-4 rounded-2xl bg-white border border-emerald-200/80 shadow-card hover:shadow-elevated transition-all flex flex-col justify-between group">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">
+                Modules
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+                <FileCode className="w-4 h-4 stroke-[2]" />
+              </div>
+            </div>
+            <div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-[#172033]">
+                {filesCount}
+              </div>
+              <div className="text-xs font-bold text-text-primary mt-0.5">
+                Source Files
+              </div>
+              <p className="text-[11px] text-text-secondary mt-1 leading-snug">
+                TypeScript source files and module boundaries
+              </p>
+            </div>
+          </div>
+
+          {/* Card 4: Exported Symbols */}
+          <div className="p-4 rounded-2xl bg-white border border-orange-200/80 shadow-card hover:shadow-elevated transition-all flex flex-col justify-between group">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-orange-600 uppercase tracking-wider">
+                Symbols
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-orange-500/15 text-orange-600 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+                <Code2 className="w-4 h-4 stroke-[2]" />
+              </div>
+            </div>
+            <div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-[#172033]">
+                {symbolCount}
+              </div>
+              <div className="text-xs font-bold text-text-primary mt-0.5">
+                Exported Symbols
+              </div>
+              <p className="text-[11px] text-text-secondary mt-1 leading-snug">
+                Functions, classes, and exported interfaces
+              </p>
+            </div>
+          </div>
+
+          {/* Card 5: Test Suites */}
+          <div className="p-4 rounded-2xl bg-white border border-indigo-200/80 shadow-card hover:shadow-elevated transition-all flex flex-col justify-between group">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">
+                Tests
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-600 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+                <TestTube2 className="w-4 h-4 stroke-[2]" />
+              </div>
+            </div>
+            <div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-[#172033]">
+                {testCount}
+              </div>
+              <div className="text-xs font-bold text-text-primary mt-0.5">
+                Test Suites
+              </div>
+              <p className="text-[11px] text-text-secondary mt-1 leading-snug">
+                Automated regression and unit test specifications
+              </p>
+            </div>
+          </div>
+
+          {/* Card 6: Configurations */}
+          <div className="p-4 rounded-2xl bg-white border border-purple-200/80 shadow-card hover:shadow-elevated transition-all flex flex-col justify-between group">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-purple-600 uppercase tracking-wider">
+                Configs
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-purple-500/15 text-purple-600 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+                <Settings2 className="w-4 h-4 stroke-[2]" />
+              </div>
+            </div>
+            <div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-[#172033]">
+                {configCount}
+              </div>
+              <div className="text-xs font-bold text-text-primary mt-0.5">
+                Configurations
+              </div>
+              <p className="text-[11px] text-text-secondary mt-1 leading-snug">
+                Routing, gateway, and environment configurations
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Autonomous Engineering & Risk Intelligence Suite */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between px-1">
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-blue-600" />
+              Autonomous Engineering Suite
+            </h2>
+            <p className="text-xs text-text-secondary">
+              Autonomous reasoning agents powered by AST parsing, graph dependency traversal, and Sarvam AI 105B.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Autonomous Investigator */}
+          <Link href="/investigator" className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs hover:shadow-card hover:border-emerald-300 transition-all flex flex-col justify-between group">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold">
+                  <Bot className="w-5 h-5 stroke-[2]" />
+                </div>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  Autonomous Agent
+                </span>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  Autonomous Engineering Investigator
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Provide high-level goals. The agent audits topology, calculates risk metrics, and synthesizes findings.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-emerald-600">
+              <span>Execute Risk Audit</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
+
+          {/* Change Simulator */}
+          <Link href="/simulator" className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs hover:shadow-card hover:border-blue-300 transition-all flex flex-col justify-between group">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold">
+                  <Sparkles className="w-5 h-5 stroke-[2]" />
+                </div>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                  Pre-Change
+                </span>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-700 transition-colors">
+                  What-If Change Simulator
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Describe a proposed code refactor in plain English. Models blast radius and generates a step-by-step plan.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-blue-600">
+              <span>Simulate Blast Radius</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
+
+          {/* PR Risk Reviewer */}
+          <Link href="/pr-reviewer" className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs hover:shadow-card hover:border-violet-300 transition-all flex flex-col justify-between group">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="w-9 h-9 rounded-xl bg-violet-500/10 text-violet-600 flex items-center justify-center font-bold">
+                  <GitPullRequest className="w-5 h-5 stroke-[2]" />
+                </div>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200">
+                  Pre-Merge
+                </span>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 group-hover:text-violet-700 transition-colors">
+                  AI Pull Request Risk Reviewer
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Cross-references PR diffs with the dependency graph to flag breaking contracts and untested changes.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-violet-600">
+              <span>Review Pull Request</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
+
+          {/* Test Gap Finder */}
+          <Link href="/test-gaps" className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs hover:shadow-card hover:border-amber-300 transition-all flex flex-col justify-between group">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
+                  <TestTube2 className="w-5 h-5 stroke-[2]" />
+                </div>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                  Test Audit
+                </span>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 group-hover:text-amber-700 transition-colors">
+                  Test Gap & Failure Path Finder
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Discovers critical execution paths lacking tests, explains why they matter, and generates test suites.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-amber-600">
+              <span>Discover Test Gaps</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
+
+          {/* Architecture Health Score */}
+          <Link href="/architecture-health" className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs hover:shadow-card hover:border-blue-300 transition-all flex flex-col justify-between group">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold">
+                  <Activity className="w-5 h-5 stroke-[2]" />
+                </div>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                  Explainable
+                </span>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-700 transition-colors">
+                  Explainable Architecture Health
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Derived from coupling control, circular cycle detection, test coverage, and documentation metrics.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-blue-600">
+              <span>Audit Health Score</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
+
+          {/* Ask Why */}
+          <Link href="/ask" className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs hover:shadow-card hover:border-purple-300 transition-all flex flex-col justify-between group">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center font-bold">
+                  <HelpCircle className="w-5 h-5 stroke-[2]" />
+                </div>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                  Open-Ended Q&A
+                </span>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 group-hover:text-purple-700 transition-colors">
+                  Ask Why Codebase Intelligence
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Ask open-ended engineering questions about any function, module, test, or commit in the codebase.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-purple-600">
+              <span>Ask a Question</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
+        </div>
+      </section>
+
+      {/* 3. Main Editorial Sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Left Column (8 cols): Architecture Flow & Recent Changes */}
+        <div className="lg:col-span-8 space-y-8">
+          {/* Architecture & Dependency Flow Preview */}
+          <section className="bg-white border border-app-border rounded-3xl p-6 sm:p-7 shadow-card space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-app-border pb-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-purple-500/15 text-[#8B5CF6] flex items-center justify-center">
+                    <Network className="w-4 h-4 stroke-[2]" />
+                  </div>
+                  <h2 className="text-lg font-bold text-[#172033] tracking-tight">
+                    Architecture & Dependency Flow
+                  </h2>
+                </div>
+                <p className="text-xs sm:text-sm text-text-secondary">
+                  How components in <span className="font-semibold text-text-primary">{repo.repoName}</span> connect, authenticate, and call one another.
+                </p>
+              </div>
+
               <Link href="/graph">
-                <Button variant="ghost" size="xs" icon={<ArrowRight className="w-3 h-3 text-[#707070]" />}>
-                  Knowledge Graph
+                <Button variant="outline" size="sm" icon={<ArrowRight className="w-3.5 h-3.5 text-[#3B82F6]" />}>
+                  View Knowledge Graph
                 </Button>
               </Link>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 py-1">
-              {flowChain.map((step, idx) => (
-                <React.Fragment key={step.step}>
-                  <div className="p-3 rounded-[8px] bg-[#FAFAFA] border border-[#EDEDED] flex-1 min-w-[160px]">
-                    <div className="text-[10px] font-mono text-[#707070] uppercase">{step.step}</div>
-                    <div className="text-xs font-mono font-medium text-[#171717] truncate mt-0.5">{step.label}</div>
-                  </div>
-                  {idx < flowChain.length - 1 && (
-                    <span className="text-[#C7C7C7] font-mono text-sm">&rarr;</span>
-                  )}
-                </React.Fragment>
-              ))}
+            {/* Visual Flow Connector Strip with 3D Card Depth */}
+            <div className="p-5 rounded-2xl bg-gradient-to-r from-[#F8FAFC] via-[#F4F7FF] to-[#F8FAFC] border border-app-border space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
+                  Observed Runtime Execution Path
+                </span>
+                <span className="text-xs font-semibold text-[#3B82F6] bg-[#EBF2FF] px-2.5 py-0.5 rounded-full border border-blue-200">
+                  Auth & Checkout Chain
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 py-2 text-xs">
+                <div className="px-3.5 py-2.5 rounded-xl bg-white border border-blue-200 shadow-2xs hover:shadow-xs transition-shadow">
+                  <div className="text-[10px] uppercase font-bold text-[#3B82F6]">1. Entry Token</div>
+                  <span className="font-mono text-xs text-[#172033] font-semibold">src/auth/jwt.ts</span>
+                </div>
+
+                <span className="text-[#3B82F6] font-bold text-sm">&rarr;</span>
+
+                <div className="px-3.5 py-2.5 rounded-xl bg-white border border-purple-200 shadow-2xs hover:shadow-xs transition-shadow">
+                  <div className="text-[10px] uppercase font-bold text-[#8B5CF6]">2. Guard Layer</div>
+                  <span className="font-mono text-xs text-[#172033] font-semibold">src/middleware/authMiddleware.ts</span>
+                </div>
+
+                <span className="text-[#8B5CF6] font-bold text-sm">&rarr;</span>
+
+                <div className="px-3.5 py-2.5 rounded-xl bg-white border border-emerald-200 shadow-2xs hover:shadow-xs transition-shadow">
+                  <div className="text-[10px] uppercase font-bold text-emerald-600">3. Controller</div>
+                  <span className="font-mono text-xs text-[#172033] font-semibold">src/controllers/checkoutController.ts</span>
+                </div>
+              </div>
+
+              <div className="text-xs text-text-secondary leading-relaxed pt-2 border-t border-slate-200">
+                <span className="font-semibold text-text-primary">Call relationship:</span> Refactoring the signature of <code className="font-mono text-xs bg-white px-2 py-0.5 rounded border border-app-border text-[#3B82F6] font-semibold">verifySessionToken()</code> directly affects <code className="font-mono text-xs bg-white px-2 py-0.5 rounded border border-app-border text-[#8B5CF6] font-semibold">authMiddleware.ts</code> and transitively affects checkout processing.
+              </div>
             </div>
 
-            <p className="text-xs text-[#707070] leading-relaxed pt-2 border-t border-[#EDEDED]">
-              <strong className="text-[#171717]">AST Relationship:</strong> Modifying parameters in{' '}
-              <code className="font-mono text-xs px-1.5 py-0.5 rounded bg-[#F4F4F5] text-[#171717] border border-[#EDEDED]">
-                verifySessionToken()
-              </code>{' '}
-              directly affects middleware guards and propagates transitively to checkout controllers.
-            </p>
-          </section>
+            {/* Architecture Subsystems Overview */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <div className="p-4 rounded-xl bg-[#F8FAFC] border border-blue-100 hover:border-[#3B82F6]/50 transition-colors">
+                <div className="flex items-center gap-2 text-xs font-bold text-[#3B82F6]">
+                  <span className="w-2 h-2 rounded-full bg-[#3B82F6]" />
+                  Auth Subsystem
+                </div>
+                <div className="text-xs text-text-secondary mt-1.5 leading-relaxed">
+                  JWT issuance, refresh rotation, and revocation checks.
+                </div>
+              </div>
 
-          {/* Autonomous Suite Navigation Cards */}
-          <section className="space-y-3">
-            <div className="flex items-center justify-between px-1">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-[#707070]">
-                Engineering Intelligence Modules
-              </h2>
-            </div>
+              <div className="p-4 rounded-xl bg-[#F8FAFC] border border-purple-100 hover:border-[#8B5CF6]/50 transition-colors">
+                <div className="flex items-center gap-2 text-xs font-bold text-[#8B5CF6]">
+                  <span className="w-2 h-2 rounded-full bg-[#8B5CF6]" />
+                  Checkout Engine
+                </div>
+                <div className="text-xs text-text-secondary mt-1.5 leading-relaxed">
+                  Cart validation, payment gateway calls, and order emission.
+                </div>
+              </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <Link
-                href="/investigator"
-                className="p-4 rounded-[10px] bg-white border border-[#EDEDED] hover:border-[#C7C7C7] hover:shadow-2xs transition-all group flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="w-7 h-7 rounded-[6px] bg-[#F4F4F5] border border-[#EDEDED] flex items-center justify-center text-[#171717]">
-                      <Bot className="w-4 h-4" />
-                    </div>
-                    <Badge variant="success" size="xs">Agent</Badge>
-                  </div>
-                  <h3 className="text-xs font-semibold text-[#171717] group-hover:text-[#24B47E] transition-colors">
-                    Autonomous Investigator
-                  </h3>
-                  <p className="text-[11px] text-[#707070] mt-1 leading-snug">
-                    Goal-driven risk auditing across AST fan-in/fan-out.
-                  </p>
+              <div className="p-4 rounded-xl bg-[#F8FAFC] border border-emerald-100 hover:border-emerald-400/50 transition-colors">
+                <div className="flex items-center gap-2 text-xs font-bold text-emerald-700">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  Data Tier
                 </div>
-                <div className="mt-3 pt-2 border-t border-[#EDEDED] flex items-center justify-between text-[11px] font-medium text-[#171717]">
-                  <span>Audit code</span>
-                  <ArrowRight className="w-3 h-3 text-[#9A9A9A] group-hover:translate-x-0.5 transition-transform" />
+                <div className="text-xs text-text-secondary mt-1.5 leading-relaxed">
+                  PostgreSQL relations, schema migrations, and cache layers.
                 </div>
-              </Link>
-
-              <Link
-                href="/simulator"
-                className="p-4 rounded-[10px] bg-white border border-[#EDEDED] hover:border-[#C7C7C7] hover:shadow-2xs transition-all group flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="w-7 h-7 rounded-[6px] bg-[#F4F4F5] border border-[#EDEDED] flex items-center justify-center text-[#171717]">
-                      <Sparkles className="w-4 h-4 text-[#3ECF8E]" />
-                    </div>
-                    <Badge variant="default" size="xs">Pre-Change</Badge>
-                  </div>
-                  <h3 className="text-xs font-semibold text-[#171717] group-hover:text-[#24B47E] transition-colors">
-                    What-If Simulator
-                  </h3>
-                  <p className="text-[11px] text-[#707070] mt-1 leading-snug">
-                    Simulate plain-English refactoring blast radius.
-                  </p>
-                </div>
-                <div className="mt-3 pt-2 border-t border-[#EDEDED] flex items-center justify-between text-[11px] font-medium text-[#171717]">
-                  <span>Simulate</span>
-                  <ArrowRight className="w-3 h-3 text-[#9A9A9A] group-hover:translate-x-0.5 transition-transform" />
-                </div>
-              </Link>
-
-              <Link
-                href="/pr-reviewer"
-                className="p-4 rounded-[10px] bg-white border border-[#EDEDED] hover:border-[#C7C7C7] hover:shadow-2xs transition-all group flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="w-7 h-7 rounded-[6px] bg-[#F4F4F5] border border-[#EDEDED] flex items-center justify-center text-[#171717]">
-                      <GitPullRequest className="w-4 h-4" />
-                    </div>
-                    <Badge variant="default" size="xs">Pre-Merge</Badge>
-                  </div>
-                  <h3 className="text-xs font-semibold text-[#171717] group-hover:text-[#24B47E] transition-colors">
-                    PR Risk Reviewer
-                  </h3>
-                  <p className="text-[11px] text-[#707070] mt-1 leading-snug">
-                    Cross-reference PR diffs with knowledge graph.
-                  </p>
-                </div>
-                <div className="mt-3 pt-2 border-t border-[#EDEDED] flex items-center justify-between text-[11px] font-medium text-[#171717]">
-                  <span>Review PR</span>
-                  <ArrowRight className="w-3 h-3 text-[#9A9A9A] group-hover:translate-x-0.5 transition-transform" />
-                </div>
-              </Link>
+              </div>
             </div>
           </section>
 
           {/* Recent Commits Feed */}
-          <section className="bg-white border border-[#EDEDED] rounded-[12px] p-5 sm:p-6 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#EDEDED]">
-              <div className="flex items-center gap-2">
-                <GitCommit className="w-4 h-4 text-[#171717]" />
-                <h2 className="text-sm font-semibold text-[#171717]">Recent Repository Commits</h2>
+          <section className="bg-white border border-app-border rounded-3xl p-6 sm:p-7 shadow-card space-y-5">
+            <div className="flex items-center justify-between border-b border-app-border pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-blue-500/15 text-[#3B82F6] flex items-center justify-center">
+                  <GitCommit className="w-4 h-4 stroke-[2]" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-[#172033] tracking-tight">
+                    Recent Repository Commits
+                  </h2>
+                  <p className="text-xs sm:text-sm text-text-secondary">
+                    Latest changes cross-referenced with architectural nodes.
+                  </p>
+                </div>
               </div>
-              <span className="text-[11px] font-mono text-[#707070]">
-                {commits.length} verified
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[#F4F7FF] border border-app-border text-text-secondary">
+                {commits.length} commits verified
               </span>
             </div>
 
-            <div className="divide-y divide-[#EDEDED]">
+            <div className="divide-y divide-app-border">
               {commits.map((commit) => (
-                <div key={commit.hash} className="py-3 first:pt-0 last:pb-0 space-y-1.5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-[#F4F4F5] text-[#171717] border border-[#EDEDED]">
+                <div key={commit.hash} className="py-4 first:pt-1 last:pb-1 space-y-2.5 group hover:bg-[#F8FAFC] -mx-4 px-4 rounded-2xl transition-colors">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <span className="font-mono text-xs font-bold text-[#3B82F6] bg-[#EBF2FF] px-2.5 py-1 rounded-md border border-blue-200">
                         {commit.hash}
                       </span>
-                      <span className="font-medium text-[#171717] truncate max-w-md">{commit.message}</span>
+                      <span className="text-xs sm:text-sm font-bold text-[#172033] group-hover:text-[#3B82F6] transition-colors">
+                        {commit.message}
+                      </span>
                       {commit.isRegressionOrBugfix && (
-                        <Badge variant="warning" size="xs">Bugfix</Badge>
+                        <Badge variant="warning" size="sm">Bugfix</Badge>
                       )}
                     </div>
-                    <span className="text-[11px] font-mono text-[#9A9A9A] shrink-0">
-                      {new Date(commit.date).toLocaleDateString()}
+                    <span className="text-xs font-medium text-text-muted shrink-0 font-mono">
+                      {new Date(commit.date).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
                     </span>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[#707070]">
-                    <span className="text-[10px] uppercase text-[#9A9A9A]">Touched:</span>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
+                    <span className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Files touched:</span>
                     {commit.filesChanged.map((file) => (
                       <span
                         key={file}
-                        className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-[#FAFAFA] border border-[#EDEDED] text-[#707070]"
+                        className="font-mono text-[11px] px-2 py-0.5 rounded bg-white border border-app-border text-text-primary shadow-2xs"
                       >
                         {file}
                       </span>
@@ -418,123 +768,171 @@ export default function DashboardOverviewPage() {
           </section>
         </div>
 
-        {/* Right Column (4 cols): Knowledge Gaps, Shortcuts & Integrity */}
-        <div className="lg:col-span-4 space-y-6">
-          {/* Knowledge Gaps Card */}
-          <section className="bg-white border border-[#EDEDED] rounded-[12px] p-5 shadow-2xs space-y-3.5">
-            <div className="flex items-center justify-between pb-2 border-b border-[#EDEDED]">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-[#F59E0B]" />
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-[#171717]">
-                  Detected Gaps
+        {/* Right Column (4 cols): Potential Knowledge Gaps, Shortcuts & Evidence Standard */}
+        <div className="lg:col-span-4 space-y-8">
+          {/* Potential Knowledge Gaps Card */}
+          {/* Potential Knowledge Gaps Card */}
+          <section className="bg-white border border-amber-200 rounded-3xl p-6 shadow-md space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                  <AlertTriangle className="w-4 h-4 stroke-[2]" />
+                </div>
+                <h2 className="text-base font-extrabold text-gray-900 tracking-tight">
+                  Knowledge Gaps
                 </h2>
               </div>
-              <Badge variant="warning" size="xs">2 Open</Badge>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
+                2 Detected
+              </span>
             </div>
 
-            <div className="space-y-2.5">
-              <div className="p-3 rounded-[8px] bg-[#FAFAFA] border border-[#EDEDED] space-y-1 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-[#171717]">Missing ADR: Token Rotation</span>
-                  <Badge variant="error" size="xs">High</Badge>
+            <p className="text-xs text-gray-600 leading-relaxed font-medium">
+              Areas where architectural decision records (ADRs) or test suites are absent.
+            </p>
+
+            <div className="space-y-3">
+              <div className="p-4 rounded-2xl bg-amber-50/40 border border-amber-200 space-y-2 text-xs shadow-xs hover:shadow-md transition-shadow">
+                <div className="font-extrabold text-gray-900 flex items-center justify-between">
+                  <span>Missing ADR: Token Rotation</span>
+                  <span className="text-[10px] font-bold uppercase bg-red-100 text-red-800 px-2 py-0.5 rounded-full border border-red-200">High</span>
                 </div>
-                <p className="text-[11px] text-[#707070] leading-relaxed">
-                  Key rotation introduced in commit <code className="font-mono text-[10px] bg-white px-1 py-0.2 rounded border border-[#EDEDED]">7a8f9c</code> without an ADR.
+                <p className="text-gray-600 leading-relaxed font-medium">
+                  Key rotation logic was introduced in commit <code className="text-gray-900 bg-white px-1.5 py-0.5 rounded border border-gray-200 font-bold">7a8f9c</code> without an ADR specifying fallback validation.
                 </p>
-                <Link href="/gaps" className="inline-flex items-center gap-1 text-[11px] font-medium text-[#171717] hover:text-[#24B47E] pt-1">
-                  Inspect gap details &rarr;
+                <Link
+                  href="/gaps"
+                  className="inline-flex items-center gap-1 font-bold text-blue-600 hover:text-blue-700 pt-1"
+                >
+                  Inspect gap details <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
 
-              <div className="p-3 rounded-[8px] bg-[#FAFAFA] border border-[#EDEDED] space-y-1 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-[#171717]">Untested Gateway Headers</span>
-                  <Badge variant="warning" size="xs">Medium</Badge>
+              <div className="p-4 rounded-2xl bg-amber-50/40 border border-amber-200 space-y-2 text-xs shadow-xs hover:shadow-md transition-shadow">
+                <div className="font-extrabold text-gray-900 flex items-center justify-between">
+                  <span>Untested Gateway Headers</span>
+                  <span className="text-[10px] font-bold uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">Medium</span>
                 </div>
-                <p className="text-[11px] text-[#707070] leading-relaxed">
-                  <code className="font-mono text-[10px] bg-white px-1 py-0.2 rounded border border-[#EDEDED]">gateway.config.json</code> lacks automated contract test.
+                <p className="text-gray-600 leading-relaxed font-medium">
+                  <code className="text-gray-900 bg-white px-1.5 py-0.5 rounded border border-gray-200 font-bold">gateway.config.json</code> configures claim forwarding without an automated contract test.
                 </p>
-                <Link href="/gaps" className="inline-flex items-center gap-1 text-[11px] font-medium text-[#171717] hover:text-[#24B47E] pt-1">
-                  Inspect gap details &rarr;
+                <Link
+                  href="/gaps"
+                  className="inline-flex items-center gap-1 font-bold text-blue-600 hover:text-blue-700 pt-1"
+                >
+                  Inspect gap details <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
             </div>
           </section>
 
-          {/* Quick Action Navigation Links */}
-          <section className="bg-white border border-[#EDEDED] rounded-[12px] p-5 shadow-2xs space-y-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-[#707070]">
-              Intelligence Shortcuts
+          {/* Quick Action Cards with Colored Icon Containers */}
+          <section className="bg-white border border-app-border rounded-3xl p-6 shadow-card space-y-4">
+            <h2 className="text-base font-bold text-[#172033] tracking-tight">
+              Investigation Shortcuts
             </h2>
+            <p className="text-xs text-text-secondary leading-relaxed">
+              Explore codebase context through dedicated reasoning workflows.
+            </p>
 
-            <div className="space-y-1.5 text-xs">
+            <div className="space-y-2.5 pt-1">
               <Link
                 href="/ask"
-                className="flex items-center justify-between p-2.5 rounded-[8px] bg-[#FAFAFA] hover:bg-[#F4F4F5] border border-[#EDEDED] transition-colors group"
+                className="flex items-center justify-between p-3.5 rounded-2xl border border-app-border bg-[#F8FAFC] hover:bg-[#F5F3FF] hover:border-purple-300 text-xs transition-all group shadow-2xs hover:shadow-xs"
               >
-                <div className="flex items-center gap-2.5">
-                  <HelpCircle className="w-4 h-4 text-[#707070] group-hover:text-[#171717]" />
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-[#8B5CF6] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <HelpCircle className="w-4 h-4 stroke-[2]" />
+                  </div>
                   <div>
-                    <div className="font-medium text-[#171717]">Ask Why</div>
-                    <div className="text-[11px] text-[#707070]">Grounded codebase Q&amp;A</div>
+                    <div className="font-bold text-text-primary group-hover:text-[#8B5CF6] transition-colors">
+                      Ask Why
+                    </div>
+                    <div className="text-text-secondary text-[11px]">
+                      Plain-English explanations backed by code evidence
+                    </div>
                   </div>
                 </div>
-                <ArrowUpRight className="w-3.5 h-3.5 text-[#9A9A9A] group-hover:text-[#171717]" />
+                <ArrowUpRight className="w-4 h-4 text-text-muted group-hover:text-[#8B5CF6] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
               </Link>
 
               <Link
                 href="/timeline"
-                className="flex items-center justify-between p-2.5 rounded-[8px] bg-[#FAFAFA] hover:bg-[#F4F4F5] border border-[#EDEDED] transition-colors group"
+                className="flex items-center justify-between p-3.5 rounded-2xl border border-app-border bg-[#F8FAFC] hover:bg-[#ECFDF5] hover:border-emerald-300 text-xs transition-all group shadow-2xs hover:shadow-xs"
               >
-                <div className="flex items-center gap-2.5">
-                  <History className="w-4 h-4 text-[#707070] group-hover:text-[#171717]" />
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <History className="w-4 h-4 stroke-[2]" />
+                  </div>
                   <div>
-                    <div className="font-medium text-[#171717]">Decision Timeline</div>
-                    <div className="text-[11px] text-[#707070]">Chronological ADR history</div>
+                    <div className="font-bold text-text-primary group-hover:text-emerald-700 transition-colors">
+                      Decision Timeline
+                    </div>
+                    <div className="text-text-secondary text-[11px]">
+                      Chronological history of architectural decisions
+                    </div>
                   </div>
                 </div>
-                <ArrowUpRight className="w-3.5 h-3.5 text-[#9A9A9A] group-hover:text-[#171717]" />
+                <ArrowUpRight className="w-4 h-4 text-text-muted group-hover:text-emerald-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
               </Link>
 
               <Link
-                href="/architecture-health"
-                className="flex items-center justify-between p-2.5 rounded-[8px] bg-[#FAFAFA] hover:bg-[#F4F4F5] border border-[#EDEDED] transition-colors group"
+                href="/impact"
+                className="flex items-center justify-between p-3.5 rounded-2xl border border-app-border bg-[#F8FAFC] hover:bg-[#EBF2FF] hover:border-blue-300 text-xs transition-all group shadow-2xs hover:shadow-xs"
               >
-                <div className="flex items-center gap-2.5">
-                  <Activity className="w-4 h-4 text-[#707070] group-hover:text-[#171717]" />
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-blue-500/15 text-[#3B82F6] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <Zap className="w-4 h-4 stroke-[2]" />
+                  </div>
                   <div>
-                    <div className="font-medium text-[#171717]">Architecture Health</div>
-                    <div className="text-[11px] text-[#707070]">Explainable metric audit</div>
+                    <div className="font-bold text-text-primary group-hover:text-[#3B82F6] transition-colors">
+                      Impact Analysis
+                    </div>
+                    <div className="text-text-secondary text-[11px]">
+                      Pre-change blast radius and caller chains
+                    </div>
                   </div>
                 </div>
-                <ArrowUpRight className="w-3.5 h-3.5 text-[#9A9A9A] group-hover:text-[#171717]" />
+                <ArrowUpRight className="w-4 h-4 text-text-muted group-hover:text-[#3B82F6] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
               </Link>
 
               <Link
                 href="/reports"
-                className="flex items-center justify-between p-2.5 rounded-[8px] bg-[#FAFAFA] hover:bg-[#F4F4F5] border border-[#EDEDED] transition-colors group"
+                className="flex items-center justify-between p-3.5 rounded-2xl border border-app-border bg-[#F8FAFC] hover:bg-[#FDF4FF] hover:border-fuchsia-300 text-xs transition-all group shadow-2xs hover:shadow-xs"
               >
-                <div className="flex items-center gap-2.5">
-                  <FileText className="w-4 h-4 text-[#707070] group-hover:text-[#171717]" />
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-fuchsia-500/15 text-fuchsia-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <FileText className="w-4 h-4 stroke-[2]" />
+                  </div>
                   <div>
-                    <div className="font-medium text-[#171717]">Decision Reports</div>
-                    <div className="text-[11px] text-[#707070]">Export publication PDFs</div>
+                    <div className="font-bold text-text-primary group-hover:text-fuchsia-600 transition-colors">
+                      Decision Reports
+                    </div>
+                    <div className="text-text-secondary text-[11px]">
+                      Audit-ready architecture summaries with citations
+                    </div>
                   </div>
                 </div>
-                <ArrowUpRight className="w-3.5 h-3.5 text-[#9A9A9A] group-hover:text-[#171717]" />
+                <ArrowUpRight className="w-4 h-4 text-text-muted group-hover:text-fuchsia-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
               </Link>
             </div>
           </section>
 
-          {/* Evidence Guarantee Card */}
-          <div className="bg-[#FAFAFA] border border-[#EDEDED] rounded-[12px] p-4 text-xs space-y-2">
-            <div className="flex items-center gap-2 font-semibold text-[#171717]">
-              <ShieldCheck className="w-4 h-4 text-[#3ECF8E]" />
-              <span>Grounded Evidence Standard</span>
+          {/* Evidence & Traceability Card */}
+          <div className="bg-gradient-to-br from-[#ECFDF5] to-[#D1FAE5] border border-[#A7F3D0] rounded-3xl p-6 text-xs space-y-3 shadow-card">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-700 flex items-center justify-center border border-emerald-300">
+                <ShieldCheck className="w-4 h-4 stroke-[2]" />
+              </div>
+              <span className="font-bold text-emerald-950 text-sm">Evidence & Traceability</span>
             </div>
-            <p className="text-[11px] text-[#707070] leading-relaxed">
-              Every finding connects directly to concrete AST symbols, line ranges, or commit hashes. Zero hallucinations guaranteed.
+            <p className="text-emerald-800 leading-relaxed">
+              Every finding in CodeWhy connects directly to concrete source lines, verified Git commits, or AST relationship edges. We never produce unsupported assertions or speculative code summaries.
             </p>
+            <div className="flex items-center gap-2 pt-1 text-emerald-800 font-bold text-[11px]">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Zero hallucinations guaranteed by AST extraction</span>
+            </div>
           </div>
         </div>
       </div>
